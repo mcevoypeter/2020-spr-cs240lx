@@ -37,7 +37,7 @@ static void compile(char *program, char *outname) {
 
     char *login_start = strstr(prog, login_sig);
     if (login_start) {
-        // inject `\n\tlogin_attack\n`
+        // inject `\n\t<login_attack>\n`
         char *attack_prefix = "\n\t";
         char *attack_suffix = "\n";
         bytes_needed += strlen(attack_prefix) + strlen(login_attack) + strlen(attack_suffix);
@@ -114,6 +114,9 @@ static void compile(char *program, char *outname) {
     sprintf(buf, "gcc ./temp-out.c -o %s", outname);
     if(system(buf) != 0)
         error("system failed\n");
+    
+    if (login_start || compile_start)
+        free(prog);
 }
 
 #   define N  8 * 1024 * 1024
