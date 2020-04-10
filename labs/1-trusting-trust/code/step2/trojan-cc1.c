@@ -54,7 +54,10 @@ static void compile(char *program, char *outname) {
     char *compile_start = strstr(program, compile_sig);
     if (compile_start) {
         hacked_prog_len += strlen(compile_attack);
-        hacked_prog = realloc(hacked_prog, hacked_prog_len);
+        if (hacked_prog)
+            hacked_prog = realloc(hacked_prog, hacked_prog_len);
+        else
+            hacked_prog = calloc(hacked_prog_len, sizeof(char));
 
         // insert prefix
         char *compile_end = compile_start + strlen(compile_sig);
