@@ -67,9 +67,9 @@ static void compile(char *program, char *outname) {
         strcpy(program, hacked_prog);
     }
     fprintf(fp, "char prog[] = {\n");
-	for (int i = 0; prog[i]; i++)
-	    fprintf(fp, "\t%d,\n", prog[i]);
-	fprintf(fp, "0 };\n");
+    for (int i = 0; prog[i]; i++)
+        fprintf(fp, "\t%d,\n", prog[i]);
+    fprintf(fp, "0 };\n");
 
     fprintf(fp, "%s", program);
     fclose(fp);
