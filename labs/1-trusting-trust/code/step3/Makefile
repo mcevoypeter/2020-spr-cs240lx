@@ -5,11 +5,7 @@ all: clone test
 
 clone:
 	../step1/string-to-char-array < attack.c > attack.h
-	cat attack.h >> replicate.c
-	rm attack.h
-	cat trojan-cc2.c >> replicate.c
-	$(CC) $(CFLAGS) replicate.c -o trojan-cc2
-	rm replicate.c
+	$(CC) $(CFLAGS) trojan-cc2.c -o trojan-cc2
 	./trojan-cc2 ../step2/identity-cc.c -o cc-attacked
 	rm temp-out.c
 	./cc-attacked ../step2/identity-cc.c -o cc-attacked2
