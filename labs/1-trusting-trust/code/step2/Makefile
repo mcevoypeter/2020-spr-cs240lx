@@ -25,3 +25,4 @@ identity-cc.check:
 
 clean:
 	rm -f  cc-attacked login-attacked out login identity-cc trojan-cc1 *.o a.out  *~ cc-attacked.c login-attacked.c out.c temp-out.c temp-out.c
+	rm -rf *.dSYM

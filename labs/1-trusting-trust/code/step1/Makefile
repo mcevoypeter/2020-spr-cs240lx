@@ -16,3 +16,4 @@ string-to-char-array: string-to-char-array.c
 
 clean:
 	rm -f string-to-char-array replicate replicate.c kid.c *~
+	rm -rf *.dSYM
