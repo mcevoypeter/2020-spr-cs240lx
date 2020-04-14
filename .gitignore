@@ -1,7 +1,9 @@
-*~
-*.bak
-*.staff
-staff
-*.swp
-*.swo
+**/~
+**/.DS_Store
+**/.bak
+**/.o
+**/.staff
+**/.swo
+**/.swp
+**/staff
 **/tags
