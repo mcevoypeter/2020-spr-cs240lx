@@ -35,6 +35,6 @@ tags:
 	ctags *.[ch] $(LIBUNIX_PATH)/*.[ch]
 
 clean :
-	rm -f *.o *.a *~ Makefile.bak $(NAME) 
+	rm -f *.a *.bin *.o *~ Makefile.bak $(NAME) 
 
 .PHONY: clean tags libs run

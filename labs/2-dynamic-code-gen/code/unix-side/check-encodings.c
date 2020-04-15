@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <sys/types.h>
+#include <stdarg.h>
 #include <string.h>
 #include "libunix.h"
 #include <unistd.h>
@@ -15,24 +16,17 @@
 uint32_t *insts_emit(unsigned *nbytes, char *insts) {
     // check libunix.h --- create_file, write_exact, run_system, read_file.
 
-    // 1. 
-    const char *temp_file = "temp.s";
-    int fd = create_file(temp_file);
+    int fd = create_file("temp.s");
     write_exact(fd, insts, strlen(insts));
     write_exact(fd, "\n", 1);
     close(fd);
     
-    // 2.
     if (system("arm-none-eabi-as --warn --fatal-warnings -mcpu=arm1176jzf-s -march=armv6zk temp.s -o temp.o"))
         panic("insts_emit: failed to assemble temp.s into temp.o\n");
     if (system("arm-none-eabi-objcopy temp.o -O binary temp.bin") != 0)
         panic("insts_emit: failed to objcopy temp.o into temp.bin\n");
 
-    // 3.
-    void *file = read_file(nbytes, "temp.bin");
-
-    // 4.
-    return file;
+    return read_file(nbytes, "temp.bin");
 }
 
 /*
@@ -72,10 +66,9 @@ void insts_print(char *insts) {
     output("]\n");
 }
 
-
 // helper function for reverse engineering.  you should refactor its interface
 // so your code is better.
-uint32_t emit_rr_plus(const char *instr_format, const char *reg) {
+uint32_t emit_rplus(const char *instr_format, const char *reg) {
     char buf[1024];
     sprintf(buf, instr_format, reg);
     
@@ -85,14 +78,11 @@ uint32_t emit_rr_plus(const char *instr_format, const char *reg) {
     return *c;
 }
 
-uint32_t solve_rrr(const char *name, const char *instr_format, const char *opcode, 
-        const char **legal_regs, const char *fixed_reg_1, const char *fixed_reg_2, unsigned *op) {
-
-
+int32_t solve_rplus(const char *instr_format, uint32_t *opcode, const char **legal_regs) {
     uint32_t always_0 = ~0, always_1 = ~0;
 
-    for (unsigned i = 0; legal_regs[i]; i++) {
-        uint32_t u = emit_rr_plus(instr_format, legal_regs[i]);
+    for (uint8_t i = 0; legal_regs[i]; i++) {
+        uint32_t u = emit_rplus(instr_format, legal_regs[i]);
 
         // if a bit is always 0 then it will be 1 in always_0
         always_0 &= ~u;
@@ -110,19 +100,45 @@ uint32_t solve_rrr(const char *name, const char *instr_format, const char *opcod
     // bits that changed: these are the register bits.
     uint32_t changed = ~never_changed;
 
-    /*output("register dst are bits set in: %x\n", changed);*/
     // find the offset.  we assume register bits are contig and within 0xf
-    uint32_t offset = ffs(changed) - 1;
+    int32_t offset = ffs(changed) - 1;
 
     // check that bits are contig and at most 4 bits are set.
     if(((changed >> offset) & ~0xf) != 0)
         panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
 
     // refine the opcode.
-    *op &= never_changed;
-    /*output("opcode is in = %x\n", *op);*/
+    *opcode &= never_changed;
 
     return offset;
+}
+
+// print out the generated function
+void print_rplus(const char *name, uint32_t opcode, int32_t d_off, int32_t s1_off, int32_t s2_off) {
+    assert(d_off >= 0);
+    // instruction with one register
+    if (s1_off == -1 && s2_off == -1) {
+        output("static int %s(uint32_t dst) {\n", name);
+        output("    return %x | (dst << %d);\n",
+                opcode,
+                d_off);
+    // instruction with two registers
+    } else if (s2_off == -1) {
+        output("static int %s(uint32_t dst, uint32_t src) {\n", name);
+        output("    return %x | (dst << %d) | (src << %d);\n",
+                opcode,
+                d_off,
+                s1_off);
+    // instruction with three registers
+    } else {
+        output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
+        output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d);\n",
+                opcode,
+                d_off,
+                s1_off,
+                s2_off);
+    }
+    output("}\n");
 }
 
 // overly-specific.  some assumptions:
@@ -139,108 +155,54 @@ uint32_t solve_rrr(const char *name, const char *instr_format, const char *opcod
 //  4. emit code to check that the derived encoding is correct.
 //  5. emit if statements to checks for illegal registers (those not in <src1>,
 //    <src2>, <dst>).
-void derive_op_rrr(const char *name, const char *opcode, 
-        const char **dst, const char **src1, const char **src2) {
+void derive_op_rplus(const char *name, const char *op, 
+        uint32_t reg_cnt, ...) {
 
-    const char *s1 = src1[0];
-    const char *s2 = src2[0];
+    if (reg_cnt < 1 || 3 < reg_cnt)
+        panic("solve_rplus: an instruction must take between 1 and 3 registers\n");
+
+    va_list regs;
+    va_start(regs, reg_cnt);
+    const char **dst = va_arg(regs, const char**);
+    const char **src1 = (reg_cnt > 1 ? va_arg(regs, const char**) : 0);
+    const char **src2 = (reg_cnt > 2 ? va_arg(regs, const char**) : 0);
+    va_end(regs);
+
     const char *d = dst[0];
-    assert(d && s1 && s2);
+    const char *s1 = (src1 ? src1[0] : 0);
+    const char *s2 = (src2 ? src2[0] : 0);
+    assert(d);
 
-    unsigned op = ~0;
     char instr_format[1024];
-
-    // solve for dst reg
-    sprintf(instr_format, "%s %%s, %s, %s", opcode, s1, s2);
-    uint32_t d_off = solve_rrr(name, instr_format, opcode, dst, s1, s2, &op);
-
-    // solve for first source reg
-    sprintf(instr_format, "%s %s, %%s, %s", opcode, d, s2);
-    uint32_t src1_off = solve_rrr(name, instr_format, opcode, src1, d, s2, &op);
-
-    // solve for second source reg
-    sprintf(instr_format, "%s %s, %s, %%s", opcode, d, s1);
-    uint32_t src2_off = solve_rrr(name, instr_format, opcode, src2, d, s1, &op);
-
-    // dummy call to zero out non-opcode bits 
-    op &= emit_rr_plus(instr_format, "r0"); 
-
-    output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
-    output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
-                op,
-                d_off,
-                src1_off,
-                src2_off);
-    output("}\n");
-}
-
-uint32_t solve_rr(const char *name, const char *instr_format, const char *opcode, 
-        const char **legal_regs, const char *fixed_reg, unsigned *op) {
-
-    uint32_t always_0 = ~0, always_1 = ~0;
-
-    for (unsigned i = 0; legal_regs[i]; i++) {
-        /*uint32_t u = emit_rr_plus(opcode, legal_regs[i], fixed_reg_1, fixed_reg_2); */
-        uint32_t u = emit_rr_plus(instr_format, legal_regs[i]);
-
-        // if a bit is always 0 then it will be 1 in always_0
-        always_0 &= ~u;
-
-        // if a bit is always 1 it will be 1 in always_1, otherwise 0
-        always_1 &= u;
+    uint32_t opcode = ~0;
+    int32_t d_off = -1, s1_off = -1, s2_off = -1;
+    switch (reg_cnt) {
+        case 3:
+            // solve for second source register
+            sprintf(instr_format, "%s %s, %s, %%s", op, d, s1);
+            s2_off = solve_rplus(instr_format, &opcode, src2);
+        case 2:
+            // solve for first source register
+            if (reg_cnt == 2)
+                sprintf(instr_format, "%s %s, %%s", op, d);
+            else if (reg_cnt == 3)
+                sprintf(instr_format, "%s %s, %%s, %s", op, d, s2);
+            s1_off = solve_rplus(instr_format, &opcode, src1);
+        case 1:
+            // solve for destination register
+            if (reg_cnt == 1)
+                sprintf(instr_format, "%s %%s", op);
+            else if (reg_cnt == 2)
+                sprintf(instr_format, "%s %%s, %s", op, s1);
+            else if (reg_cnt == 3)
+                sprintf(instr_format, "%s %%s, %s, %s", op, s1, s2);
+            d_off = solve_rplus(instr_format, &opcode, dst);
     }
 
-    if(always_0 & always_1) 
-        panic("impossible overlap: always_0 = %x, always_1 %x\n", 
-            always_0, always_1);
-
-    // bits that never changed
-    uint32_t never_changed = always_0 | always_1;
-    // bits that changed: these are the register bits.
-    uint32_t changed = ~never_changed;
-
-    /*output("register dst are bits set in: %x\n", changed);*/
-    // find the offset.  we assume register bits are contig and within 0xf
-    uint32_t offset = ffs(changed) - 1;
-
-    // check that bits are contig and at most 4 bits are set.
-    if(((changed >> offset) & ~0xf) != 0)
-        panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
-
-    // refine the opcode.
-    *op &= never_changed;
-    /*output("opcode is in = %x\n", *op);*/
-
-    return offset;
-}
-
-void derive_op_rr(const char *name, const char *opcode,
-        const char **dst, const char **src) {
-
-    const char *s = src[0];
-    const char *d = dst[0];
-    assert(d && s);
-
-    unsigned op = ~0;
-    char instr_format[1024];
-
-    // solve for dst reg
-    sprintf(instr_format, "%s %%s, %s", opcode, s);
-    uint32_t d_off = solve_rr(name, instr_format, opcode, dst, s, &op);
-
-    // solve for source reg
-    sprintf(instr_format, "%s %s, %%s", opcode, d);
-    uint32_t src_off = solve_rr(name, instr_format, opcode, src, d, &op);
-
     // dummy call to zero out non-opcode bits 
-    op &= emit_rr_plus(instr_format, "r0"); 
+    opcode &= emit_rplus(instr_format, "r0"); 
 
-    output("static int %s(uint32_t dst, uint32_t src) {\n", name);
-    output("    return %x | (dst << %d) | (src << %d)\n",
-                op,
-                d_off,
-                src_off);
-    output("}\n");
+    print_rplus(name, opcode, d_off, s1_off, s2_off);
 }
 
 /*
@@ -302,7 +264,7 @@ int main(void) {
 
     // part 4: implement the code so it will derive the add instruction.
     output("\n-----------------------------------------\n");
-    output("part4: checking that we can reverse engineer an <add>\n");
+    output("part4: checking that we can reverse engineer data processing instructions\n");
 
     const char *all_regs[] = {
                 "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
@@ -310,22 +272,22 @@ int main(void) {
                 0 
     };
     // XXX: should probably pass a bitmask in instead.
-    derive_op_rrr("arm_and", "and", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_eor", "eor", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_sub", "sub", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_rsb", "rsb", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_add", "add", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_adc", "adc", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_sbc", "sbc", all_regs, all_regs, all_regs);
-    derive_op_rrr("arm_rsc", "rsc", all_regs, all_regs, all_regs);
-    derive_op_rr("arm_tst", "tst", all_regs, all_regs);
-    derive_op_rr("arm_teq", "teq", all_regs, all_regs);
-    derive_op_rr("arm_cmp", "cmp", all_regs, all_regs);
-    derive_op_rr("arm_cmn", "cmn", all_regs, all_regs);
-    derive_op_rrr("arm_orr", "orr", all_regs, all_regs, all_regs);
-    derive_op_rr("arm_mov", "mov", all_regs, all_regs);
-    derive_op_rrr("arm_bic", "bic", all_regs, all_regs, all_regs);
-    derive_op_rr("arm_mvn", "mvn", all_regs, all_regs);
+    derive_op_rplus("arm_and", "and", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_eor", "eor", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_sub", "sub", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_rsb", "rsb", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_add", "add", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_adc", "adc", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_sbc", "sbc", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_rsc", "rsc", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_tst", "tst", 2, all_regs, all_regs);
+    derive_op_rplus("arm_teq", "teq", 2, all_regs, all_regs);
+    derive_op_rplus("arm_cmp", "cmp", 2, all_regs, all_regs);
+    derive_op_rplus("arm_cmn", "cmn", 2, all_regs, all_regs);
+    derive_op_rplus("arm_orr", "orr", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_mov", "mov", 2, all_regs, all_regs);
+    derive_op_rplus("arm_bic", "bic", 3, all_regs, all_regs, all_regs);
+    derive_op_rplus("arm_mvn", "mvn", 2, all_regs, all_regs);
     output("did something: now use the generated code in the checks above!\n");
 
     // get encodings for other instructions, loads, stores, branches, etc.
