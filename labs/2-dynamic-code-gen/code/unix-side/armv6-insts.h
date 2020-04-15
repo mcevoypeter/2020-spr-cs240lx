@@ -88,9 +88,31 @@ _Static_assert(arm_mvn_op == 0b1111, "bad num list");
 //  - shift operatnd: page A5-8 [armv6.pdf]
 //
 // we do not do any carries, so S = 0.
+struct data_proc_instr {
+    unsigned shifter_operand:12;
+    unsigned Rd:4;
+    unsigned Rn:4;
+    unsigned S:1;   // carry
+    unsigned opcode:4;
+    unsigned I:3;   // immediate
+    unsigned cond:4;
+};
+typedef struct data_proc_instr data_proc_instr_t;
+
 static inline unsigned arm_add(uint8_t rd, uint8_t rs1, uint8_t rs2) {
     assert(arm_add_op == 0b0100);
-    unimplemented();
+    data_proc_instr_t instr = {
+        .cond = arm_AL,
+        .I = 0,
+        .opcode = arm_add_op,
+        .S = 0,
+        .Rn = rs1,
+        .Rd = rd,
+        .shifter_operand = rs2
+    };
+    unsigned encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
 }
 
 // <add> of an immediate

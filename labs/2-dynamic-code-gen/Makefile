@@ -19,8 +19,11 @@ clean: TARGET=clean
 $(SUBDIRS): force
 	$(MAKE) -s -C $@ $(TARGET)
 
+tags:
+	/usr/local/bin/ctags -R .
+
 clean:
-	rm -f *~ *.bak
+	rm -f *~ *.bak tags
 
 .PHONY: force
 	force :;

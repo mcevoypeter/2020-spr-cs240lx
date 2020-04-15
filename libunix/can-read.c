@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <sys/select.h>
 #include "libunix.h"
 
 #if 0
