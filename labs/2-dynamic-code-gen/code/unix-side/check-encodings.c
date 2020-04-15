@@ -75,7 +75,7 @@ void insts_print(char *insts) {
 
 // helper function for reverse engineering.  you should refactor its interface
 // so your code is better.
-uint32_t emit_rrr(const char *instr_format, const char *reg) {
+uint32_t emit_rr_plus(const char *instr_format, const char *reg) {
     char buf[1024];
     sprintf(buf, instr_format, reg);
     
@@ -84,17 +84,6 @@ uint32_t emit_rrr(const char *instr_format, const char *reg) {
     assert(n == 4);
     return *c;
 }
-#if 0
-uint32_t emit_rrr(const char *op, const char *d, const char *s1, const char *s2) {
-    char buf[1024];
-    sprintf(buf, "%s %s, %s, %s", op, d, s1, s2);
-
-    uint32_t n;
-    uint32_t *c = insts_emit(&n, buf);
-    assert(n == 4);
-    return *c;
-}
-#endif
 
 uint32_t solve_rrr(const char *name, const char *instr_format, const char *opcode, 
         const char **legal_regs, const char *fixed_reg_1, const char *fixed_reg_2, unsigned *op) {
@@ -103,8 +92,7 @@ uint32_t solve_rrr(const char *name, const char *instr_format, const char *opcod
     uint32_t always_0 = ~0, always_1 = ~0;
 
     for (unsigned i = 0; legal_regs[i]; i++) {
-        /*uint32_t u = emit_rrr(opcode, legal_regs[i], fixed_reg_1, fixed_reg_2); */
-        uint32_t u = emit_rrr(instr_format, legal_regs[i]);
+        uint32_t u = emit_rr_plus(instr_format, legal_regs[i]);
 
         // if a bit is always 0 then it will be 1 in always_0
         always_0 &= ~u;
@@ -154,13 +142,10 @@ uint32_t solve_rrr(const char *name, const char *instr_format, const char *opcod
 void derive_op_rrr(const char *name, const char *opcode, 
         const char **dst, const char **src1, const char **src2) {
 
-    
-    // #MINE
     const char *s1 = src1[0];
     const char *s2 = src2[0];
     const char *d = dst[0];
-    assert(d && s1);
-    uint8_t has_third_reg = src2 ? 1 : 0;
+    assert(d && s1 && s2);
 
     unsigned op = ~0;
     char instr_format[1024];
@@ -173,50 +158,30 @@ void derive_op_rrr(const char *name, const char *opcode,
     sprintf(instr_format, "%s %s, %%s, %s", opcode, d, s2);
     uint32_t src1_off = solve_rrr(name, instr_format, opcode, src1, d, s2, &op);
 
-    // dummy call to zero out non-opcode bits 
-    /*op &= emit_rrr(instr_format, "r0"); */
-
     // solve for second source reg
-    if (has_third_reg) { 
-        sprintf(instr_format, "%s %s, %s, %%s", opcode, d, s1);
-        uint32_t src2_off = solve_rrr(name, instr_format, opcode, src2, d, s1, &op);
+    sprintf(instr_format, "%s %s, %s, %%s", opcode, d, s1);
+    uint32_t src2_off = solve_rrr(name, instr_format, opcode, src2, d, s1, &op);
 
-        // dummy call to zero out non-opcode bits 
-        op &= emit_rrr(instr_format, "r0"); 
+    // dummy call to zero out non-opcode bits 
+    op &= emit_rr_plus(instr_format, "r0"); 
 
-        output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
-        output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
-                    op,
-                    d_off,
-                    src1_off,
-                    src2_off);
-        output("}\n");
-    } else {
-        sprintf(instr_format, "%s %s, %s, %%s", opcode, d, s1);
-        output("static int %s(uint32_t dst, uint32_t src1) {\n", name);
-        output("    return %x | (dst << %d) | (src1 << %d)\n",
-                    op,
-                    d_off,
-                    src1_off);
-        output("}\n");
-    }
+    output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
+    output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
+                op,
+                d_off,
+                src1_off,
+                src2_off);
+    output("}\n");
 }
 
-    
-        
-#if 0
-    const char *s1 = src1[0];
-    const char *s2 = src2[0];
-    const char *d = dst[0];
-    assert(d && s1 && s2);
-
-    unsigned d_off = 0, src1_off = 0, src2_off = 0, op = ~0;
+uint32_t solve_rr(const char *name, const char *instr_format, const char *opcode, 
+        const char **legal_regs, const char *fixed_reg, unsigned *op) {
 
     uint32_t always_0 = ~0, always_1 = ~0;
 
-    // compute any bits that changed as we vary d.
-    for(unsigned i = 0; dst[i]; i++) {
-        uint32_t u = emit_rrr(opcode, dst[i], s1, s2);
+    for (unsigned i = 0; legal_regs[i]; i++) {
+        /*uint32_t u = emit_rr_plus(opcode, legal_regs[i], fixed_reg_1, fixed_reg_2); */
+        uint32_t u = emit_rr_plus(instr_format, legal_regs[i]);
 
         // if a bit is always 0 then it will be 1 in always_0
         always_0 &= ~u;
@@ -234,28 +199,49 @@ void derive_op_rrr(const char *name, const char *opcode,
     // bits that changed: these are the register bits.
     uint32_t changed = ~never_changed;
 
-    output("register dst are bits set in: %x\n", changed);
-
+    /*output("register dst are bits set in: %x\n", changed);*/
     // find the offset.  we assume register bits are contig and within 0xf
-    d_off = ffs(changed);
-    
-    // check that bits are contig and at most 4 bits are set.
-    if(((changed >> d_off) & ~0xf) != 0)
-        panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
-    // refine the opcode.
-    op &= never_changed;
-    output("opcode is in =%x\n", op);
+    uint32_t offset = ffs(changed) - 1;
 
-    // emit: NOTE: obviously, currently <src1_off>, <src2_off> are not 
-    // defined (so solve for them) and opcode needs to be refined more.
-    output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
-    output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
+    // check that bits are contig and at most 4 bits are set.
+    if(((changed >> offset) & ~0xf) != 0)
+        panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
+
+    // refine the opcode.
+    *op &= never_changed;
+    /*output("opcode is in = %x\n", *op);*/
+
+    return offset;
+}
+
+void derive_op_rr(const char *name, const char *opcode,
+        const char **dst, const char **src) {
+
+    const char *s = src[0];
+    const char *d = dst[0];
+    assert(d && s);
+
+    unsigned op = ~0;
+    char instr_format[1024];
+
+    // solve for dst reg
+    sprintf(instr_format, "%s %%s, %s", opcode, s);
+    uint32_t d_off = solve_rr(name, instr_format, opcode, dst, s, &op);
+
+    // solve for source reg
+    sprintf(instr_format, "%s %s, %%s", opcode, d);
+    uint32_t src_off = solve_rr(name, instr_format, opcode, src, d, &op);
+
+    // dummy call to zero out non-opcode bits 
+    op &= emit_rr_plus(instr_format, "r0"); 
+
+    output("static int %s(uint32_t dst, uint32_t src) {\n", name);
+    output("    return %x | (dst << %d) | (src << %d)\n",
                 op,
                 d_off,
-                src1_off,
-                src2_off);
+                src_off);
     output("}\n");
-#endif
+}
 
 /*
  * 1. we start by using the compiler / assembler tool chain to get / check
@@ -332,17 +318,15 @@ int main(void) {
     derive_op_rrr("arm_adc", "adc", all_regs, all_regs, all_regs);
     derive_op_rrr("arm_sbc", "sbc", all_regs, all_regs, all_regs);
     derive_op_rrr("arm_rsc", "rsc", all_regs, all_regs, all_regs);
-
-    derive_op_rrr("arm_tst", "tst", all_regs, all_regs, 0);
-    derive_op_rrr("arm_teq", "teq", all_regs, all_regs, 0);
-    derive_op_rrr("arm_cmp", "cmp", all_regs, all_regs, 0);
-    derive_op_rrr("arm_cmn", "cmn", all_regs, all_regs, 0);
-    derive_op_rrr("arm_orr", "orr", all_regs, all_regs, 0);
-    derive_op_rrr("arm_mov", "mov", all_regs, all_regs, 0);
-    derive_op_rrr("arm_bic", "bic", all_regs, all_regs, 0);
-    derive_op_rrr("arm_mvn", "mvn", all_regs, all_regs, 0);
+    derive_op_rr("arm_tst", "tst", all_regs, all_regs);
+    derive_op_rr("arm_teq", "teq", all_regs, all_regs);
+    derive_op_rr("arm_cmp", "cmp", all_regs, all_regs);
+    derive_op_rr("arm_cmn", "cmn", all_regs, all_regs);
+    derive_op_rrr("arm_orr", "orr", all_regs, all_regs, all_regs);
+    derive_op_rr("arm_mov", "mov", all_regs, all_regs);
+    derive_op_rrr("arm_bic", "bic", all_regs, all_regs, all_regs);
+    derive_op_rr("arm_mvn", "mvn", all_regs, all_regs);
     output("did something: now use the generated code in the checks above!\n");
-    assert(0);
 
     // get encodings for other instructions, loads, stores, branches, etc.
     return 0;
