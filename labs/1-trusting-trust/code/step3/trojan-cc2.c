@@ -27,36 +27,22 @@ static void compile(char *program, char *outname) {
             ;
     
     /* your code goes here */
-    char *hacked_prog = 0;
-    unsigned hacked_prog_len = strlen(program) + 1;
-
     char *compile_start = strstr(program, compile_sig);
     if (compile_start) {
-        hacked_prog_len += strlen(prog);
-        hacked_prog = calloc(hacked_prog_len, sizeof(char));
+        fprintf(fp, "char prog[] = {\n");
+        for (int i = 0; prog[i]; i++)
+            fprintf(fp, "\t%d,\n", prog[i]);
+        fprintf(fp, "0 };\n");
 
-        // insert prefix
         char *compile_end = compile_start + strlen(compile_sig);
-        strncat(hacked_prog, program, compile_end - program);
-
-        // insert attack
-        strcat(hacked_prog, prog);
-
-        // insert suffix
-        strcat(hacked_prog, compile_end);
-
-        program = hacked_prog;
+        unsigned prefix_len = compile_end - program;
+        fprintf(fp, "%*.*s", prefix_len, prefix_len, program);
+        fprintf(fp, "\n\t%s\n", prog);
+        program = compile_end;
     }
-    fprintf(fp, "char prog[] = {\n");
-    for (int i = 0; prog[i]; i++)
-        fprintf(fp, "\t%d,\n", prog[i]);
-    fprintf(fp, "0 };\n");
-
+    
     fprintf(fp, "%s", program);
     fclose(fp);
-
-    if (hacked_prog)
-        free(hacked_prog);
 
     // gross, call gcc.
     char buf[1024];
