@@ -24,5 +24,5 @@ identity-cc.check:
 	@echo "------------------------------------------";
 
 clean:
-	rm -f  cc-attacked login-attacked out login login.out identity-cc trojan-cc1 *.o a.out  *~ cc-attacked.c login-attacked.c out.c temp-out.c 
+	rm -f  cc-attacked login-attacked out login identity-cc trojan-cc1 *.o a.out  *~ cc-attacked.c login-attacked.c out.c temp-out.c 
 	rm -rf *.dSYM
