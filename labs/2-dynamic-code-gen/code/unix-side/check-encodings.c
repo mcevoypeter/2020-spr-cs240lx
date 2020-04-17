@@ -260,6 +260,37 @@ int main(void) {
     check_one_inst("add r9, r10, r11", arm_add(arm_r9, arm_r10, arm_r11));
     check_one_inst("add r12, r13, r14", arm_add(arm_r12, arm_r13, arm_r14));
     check_one_inst("add r15, r7, r3", arm_add(arm_r15, arm_r7, arm_r3));
+    check_one_inst("mov r0, r1", arm_mov_reg(arm_r0, arm_r1));
+    check_one_inst("mov r0, #9", arm_mov_imm(arm_r0, 9));
+    check_one_inst("ldr r0, [pc, #0]", arm_ldr_imm(arm_r0, arm_r15, 0));
+    check_one_inst("ldr r0, [pc, #256]", arm_ldr_imm(arm_r0, arm_r15, 256));
+    check_one_inst("ldr r0, [pc, #-256]", arm_ldr_imm(arm_r0, arm_r15, -256));
+    check_one_inst("str pc, [r0, #0]", arm_str_imm(arm_r15, arm_r0, 0));
+    check_one_inst("str pc, [r0, #256]", arm_str_imm(arm_r15, arm_r0, 256));
+    check_one_inst("str pc, [r0, #-256]", arm_str_imm(arm_r15, arm_r0, -256));
+    check_one_inst("b label; label: ", arm_b(0, 4));
+    check_one_inst("bl label; label: ", arm_bl(0, 4));
+    check_one_inst("label: b label; ", arm_b(0, 0));
+    check_one_inst("label: bl label; ", arm_bl(0, 0));
+    uint16_t reg_list = (1 << arm_r3 | 1 << arm_r2 | 1 << arm_r1);
+    check_one_inst("stmia r0, {r1, r2, r3}", arm_stm(arm_IA, arm_const_base, arm_r0, reg_list));
+    check_one_inst("stmib r0, {r1, r2, r3}", arm_stm(arm_IB, arm_const_base, arm_r0, reg_list));
+    check_one_inst("stmda r0, {r1, r2, r3}", arm_stm(arm_DA, arm_const_base, arm_r0, reg_list));
+    check_one_inst("stmdb r0, {r1, r2, r3}", arm_stm(arm_DB, arm_const_base, arm_r0, reg_list));
+    check_one_inst("stmia r0!, {r1, r2, r3}", arm_stm(arm_IA, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("stmib r0!, {r1, r2, r3}", arm_stm(arm_IB, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("stmda r0!, {r1, r2, r3}", arm_stm(arm_DA, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("stmdb r0!, {r1, r2, r3}", arm_stm(arm_DB, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("ldmia r0, {r1, r2, r3}", arm_ldm(arm_IA, arm_const_base, arm_r0, reg_list));
+    check_one_inst("ldmib r0, {r1, r2, r3}", arm_ldm(arm_IB, arm_const_base, arm_r0, reg_list));
+    check_one_inst("ldmda r0, {r1, r2, r3}", arm_ldm(arm_DA, arm_const_base, arm_r0, reg_list));
+    check_one_inst("ldmdb r0, {r1, r2, r3}", arm_ldm(arm_DB, arm_const_base, arm_r0, reg_list));
+    check_one_inst("ldmia r0!, {r1, r2, r3}", arm_ldm(arm_IA, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("ldmib r0!, {r1, r2, r3}", arm_ldm(arm_IB, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("ldmda r0!, {r1, r2, r3}", arm_ldm(arm_DA, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("ldmdb r0!, {r1, r2, r3}", arm_ldm(arm_DB, arm_incr_base, arm_r0, reg_list));
+    check_one_inst("push {r3, lr}", arm_stm(arm_DB, arm_incr_base, arm_sp, (1 << arm_lr | 1 << arm_r3)));
+    check_one_inst("pop {r3, pc}", arm_ldm(arm_IA, arm_incr_base, arm_sp, (1 << arm_pc | 1 << arm_r3)));
     output("success!\n");
 
     // part 4: implement the code so it will derive the add instruction.

@@ -89,13 +89,13 @@ _Static_assert(arm_mvn_op == 0b1111, "bad num list");
 //
 // we do not do any carries, so S = 0.
 struct data_proc_instr {
-    unsigned shifter_operand:12;
-    unsigned Rd:4;
-    unsigned Rn:4;
-    unsigned S:1;   // carry
-    unsigned opcode:4;
-    unsigned I:3;   // immediate
-    unsigned cond:4;
+    uint32_t shifter_operand:12,
+             Rd:4,
+             Rn:4,
+             S:1,   // carry
+             opcode:4,
+             I:3,   // immediate
+             cond:4;
 };
 typedef struct data_proc_instr data_proc_instr_t;
 
@@ -129,5 +129,215 @@ static inline uint32_t
 arm_or_imm_rot(uint8_t rd, uint8_t rs1, uint8_t imm8, uint8_t rot_nbits) {
     unimplemented();
 }
+
+// A4-68
+struct mov_instr {
+    uint32_t shifter_operand:12,
+             Rd:4,
+             SBZ:4,
+             S:1,
+             fixed1:4,
+             I:1,
+             fixed2:2,
+             cond:4;
+};
+typedef struct mov_instr mov_instr_t;
+
+// A4-68
+static inline unsigned arm_mov_reg(uint8_t rd, uint8_t rn) {
+    mov_instr_t instr = {
+        .cond = arm_AL,
+        .fixed2 = 0b00,
+        .I = 0,
+        .fixed1 = 0b1101,
+        .S = 0,
+        .SBZ = 0b0000,
+        .shifter_operand = rn
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+
+// A4-68
+static inline unsigned arm_mov_imm(uint8_t rd, uint8_t imm) {
+    mov_instr_t instr = {
+        .cond = arm_AL,
+        .fixed2 = 0b00,
+        .I = 1,
+        .fixed1 = 0b1101,
+        .S = 0,
+        .SBZ = 0b0000,
+        .shifter_operand = imm // this definitely needs to change
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+// A3-21 
+struct ldr_str_instr {
+    uint32_t addressing_mode_specific:12, 
+             Rd:4,
+             Rn:4,
+             L:1,
+             W:1,
+             B:1,
+             U:1,
+             P:1,
+             I:1,
+             fixed:2,
+             cond:4;
+};
+typedef struct ldr_str_instr ldr_str_instr_t;
+
+// load immediate - A5-19
+static inline uint32_t arm_ldr_imm(uint8_t rd, uint8_t rn, int16_t imm) {
+    ldr_str_instr_t instr = {
+        .cond = arm_AL,
+        .fixed = 0b01,
+        .I = 0,
+        .P = 1,
+        .U = (imm < 0 ? 0 : 1),
+        .B = 0,
+        .W = 0,
+        .L = 1,
+        .Rn = rn,
+        .Rd = rd,
+        .addressing_mode_specific = (imm < 0 ? -imm : imm)
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+
+// store immediate - A5-19
+static inline uint32_t arm_str_imm(uint8_t rd, uint8_t rn, int16_t imm) {
+    ldr_str_instr_t instr = {
+        .cond = arm_AL,
+        .fixed = 0b01,
+        .I = 0,
+        .P = 1,
+        .U = (imm < 0 ? 0 : 1),
+        .B = 0,
+        .W = 0,
+        .L = 0,
+        .Rn = rn,
+        .Rd = rd,
+        .addressing_mode_specific = (imm < 0 ? -imm : imm)
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+
+// A3-26
+struct ldm_stm_instr {
+    uint32_t reg_list:16,
+             Rn:4,
+             L:1,
+             W:1,
+             S:1,
+             U:1,
+             P:1,
+             fixed:3,
+             cond:4;
+};
+typedef struct ldm_stm_instr ldm_stm_instr_t;
+
+// addressing modes for ldm and stm - A5-48
+enum {
+    arm_DA = 0,
+    arm_IA,
+    arm_DB,
+    arm_IB
+};
+_Static_assert(arm_IB == 0b11, "bad_enum");
+
+// values of W - A5-48
+enum {
+    arm_const_base = 0,
+    arm_incr_base
+};
+_Static_assert(arm_incr_base == 1, "bad enum");
+       
+
+// load multiple - A5-42
+static inline uint32_t arm_ldm(uint8_t addr_mode, uint8_t incr_base, uint8_t rn, uint16_t reg_list) {
+    ldm_stm_instr_t instr = {
+        .cond = arm_AL,
+        .fixed = 0b100,
+        .P = (addr_mode >> 1) & 1,
+        .U = addr_mode & 1,
+        .S = 0,     // unsure about this one
+        .W = incr_base,
+        .L = 1,
+        .Rn = rn,
+        .reg_list = reg_list
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+
+}
+
+// store multiple - A5-42
+static inline uint32_t arm_stm(uint8_t addr_mode, uint8_t incr_base, uint8_t rn, uint16_t reg_list) {
+    ldm_stm_instr_t instr = {
+        .cond = arm_AL,
+        .fixed = 0b100,
+        .P = (addr_mode >> 1) & 1,
+        .U = addr_mode & 1,
+        .S = 0,     // unsure about this one
+        .W = incr_base,
+        .L = 0,
+        .Rn = rn,
+        .reg_list = reg_list
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+
+// A4-10
+struct b_bl_instr {
+    uint32_t signed_immed:24,
+             L:1,
+             fixed:3,
+             cond:4;
+};
+typedef struct b_bl_instr b_bl_instr_t;
+
+// branch and (optionally) link - A4-10
+static inline uint32_t arm_b(int32_t src, int32_t dest) {
+    // subtract pc+8 from the target and right shift 2
+    int32_t signed_immed = (dest - (src + 8)) >> 2;
+    int32_t target = src + signed_immed + 8;
+    b_bl_instr_t instr = {
+        .cond = arm_AL,
+        .fixed = 0b101,
+        .L = 0,
+        .signed_immed = signed_immed
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+
+// branch and link - A4-10
+static inline uint32_t arm_bl(int32_t src, int32_t dest) {
+    // subtract pc+8 from the target and right shift 2
+    int32_t signed_immed = (dest - (src + 8)) >> 2;
+    int32_t target = src + signed_immed + 8;
+    b_bl_instr_t instr = {
+        .cond = arm_AL,
+        .fixed = 0b101,
+        .L = 1,
+        .signed_immed = signed_immed
+    };
+    uint32_t encoded_instr;
+    memcpy(&encoded_instr, &instr, sizeof(unsigned));
+    return encoded_instr;
+}
+
 
 #endif
