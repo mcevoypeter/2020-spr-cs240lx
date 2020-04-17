@@ -11,6 +11,9 @@ SECTIONS
 
     /* our simple a.out header.  will add as needed. */
     .crt0_header LINK_ADDR : {
+        /* `b (SIZEOF(.crt0_header)-8) >> 2` to jump over the header */
+        LONG(0xEA000000 | (SIZEOF(.crt0_header)-8) >> 2);
+
         /* magic cookie for sanity checking */
         LONG(0x12345678);
         /* 
@@ -30,6 +33,20 @@ SECTIONS
         LONG(SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.rodata) );
 
         /* can add stuff below and loader should still work */
+        /* "hello world\0" */
+        BYTE(0x68);
+        BYTE(0x65);
+        BYTE(0x6c);
+        BYTE(0x6c);
+        BYTE(0x6f);
+        BYTE(0x20);
+        BYTE(0x77);
+        BYTE(0x6f);
+        BYTE(0x72);
+        BYTE(0x6c);
+        BYTE(0x64);
+        BYTE(0x0);
+        /* The number of above bytes better be a multiple of 4. */
     }
 	.text :  { KEEP(*(.text.boot))  *(.text*) }
     .data :   { . = ALIGN(4); *(.data*)   . = ALIGN(4); } 
