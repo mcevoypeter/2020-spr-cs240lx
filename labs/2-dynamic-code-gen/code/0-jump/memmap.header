@@ -46,6 +46,7 @@ SECTIONS
         BYTE(0x6c);
         BYTE(0x64);
         BYTE(0x0);
+        . = ALIGN(4);
         /* The number of above bytes better be a multiple of 4. */
     }
 	.text :  { KEEP(*(.text.boot))  *(.text*) }
