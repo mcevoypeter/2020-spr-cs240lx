@@ -56,7 +56,6 @@ void notmain(void) {
     //  1. generate code when cache is off.
     //  2. invalidate cache before use.
     // enable_cache();
-
     cnt = 0;
     TIME_CYC_PRINT10("cost of generic-int calling",  generic_call_int(intv,n));
     demand(cnt == n*10, "cnt=%d, expected=%d\n", cnt, n*10);
@@ -64,6 +63,28 @@ void notmain(void) {
     // rewrite to generate specialized caller dynamically.
     cnt = 0;
     TIME_CYC_PRINT10("cost of specialized int calling", specialized_call_int() );
+    demand(cnt == n*10, "cnt=%d, expected=%d\n", cnt, n*10);
+
+    static uint32_t code[16];
+    uint32_t i = 0;
+
+     // `push {lr}`
+    code[i++] = arm_stm(arm_DB, arm_incr_base, arm_sp, 1 << arm_lr); 
+    for (uint32_t j = 0; j < n; j++) {
+        // `bl &intv[j]`
+        code[i] = arm_bl((int32_t)&code[i], (int32_t)intv[j]);
+        i++;
+    }
+    // `pop {pc}`
+    code[i++] = arm_ldm(arm_IA, arm_incr_base, arm_sp, 1 << arm_pc);
+
+    printk("emitted code:\n");
+    for(int i = 0; i < n; i++) 
+        printk("code[%d]=0x%x\n", i, code[i]);
+
+    void (*fp)(void) = (typeof(fp))code;
+    cnt = 0;
+    TIME_CYC_PRINT10("cost of dynamically-generated int calling", fp() );
     demand(cnt == n*10, "cnt=%d, expected=%d\n", cnt, n*10);
 
     clean_reboot();
