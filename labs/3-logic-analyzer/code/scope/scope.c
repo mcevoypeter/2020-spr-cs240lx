@@ -12,7 +12,9 @@ typedef struct {
 // compute the number of cycles per second
 unsigned cycles_per_sec(unsigned s) {
     demand(s < 2, will overflow);
-    unimplemented();
+    unsigned start = cycle_cnt_read();
+    delay_ms(1000*s);
+    return cycle_cnt_read() - start;
 }
 
 // monitor <pin>, recording any transitions until either:
@@ -20,9 +22,36 @@ unsigned cycles_per_sec(unsigned s) {
 //  2. we have recorded <n_max> samples.
 //
 // return value: the number of samples recorded.
-unsigned 
-scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) {
-    unimplemented();
+unsigned scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) {
+    unsigned i = 0;
+    unsigned start = cycle_cnt_read();
+    unsigned val = gpio_read(pin);
+    while (1) {
+        for (unsigned int j = 0; j < 1000; j++) {
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+            if (gpio_read(pin) != val)
+                break;
+        }
+        l[i] = (log_ent_t){ .v = val, .ncycles = cycle_cnt_read() - (i+1)*start };
+        i++;
+        val ^= 1;
+        if (cycle_cnt_read() - start > max_cycles || i > n_max)
+            break;
+    }
+    return i;
 }
 
 // dump out the log, calculating the error at each point,

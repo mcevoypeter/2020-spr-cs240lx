@@ -10,8 +10,8 @@ include $(CS140E_PATH)/libpi/includes.mk
 CFLAGS += -Wno-unused-function -Wno-unused-variable 
 
 # if you want to compile everything in a directory, do something like this.
-SOURCES := $(wildcard ./*.c)
-OBJS := $(patsubst %.c, %.o, $(SOURCES))
+SOURCES := $(wildcard ./*.c) 
+OBJS := $(patsubst %.c, %.o, $(SOURCES)) generate.o
 # OBJS := $(NAME).o
 CFLAGS := $(filter-out -Og,$(CFLAGS))
 CFLAGS += -O3
@@ -31,6 +31,8 @@ $(OBJS): $(DEPS)
 	$(CC) $(CFLAGS) -c $< -o $@
 %.o: %.S
 	$(CC) -c $(CPP_ASFLAGS) $< -o $@
+%.o: %.s
+	$(AS) $< -o $@
 
 # rules to generate .elf->.list->.bin
 %.elf: $(MEMMAP) $(OBJS) $(DEPS) 
@@ -41,7 +43,7 @@ $(OBJS): $(DEPS)
 	$(OCP) $*.elf -O binary $*.bin
 
 run:
-	my-install /dev/ttyUSB1 ./$(NAME).bin
+	my-install /dev/cu.SLAB_USBtoUART ./$(NAME).bin
 
 tags: 
 	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs]
