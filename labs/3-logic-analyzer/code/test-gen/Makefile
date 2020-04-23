@@ -11,7 +11,7 @@ CFLAGS += -Wno-unused-function -Wno-unused-variable
 
 # if you want to compile everything in a directory, do something like this.
 SOURCES := $(wildcard ./*.c) 
-OBJS := $(patsubst %.c, %.o, $(SOURCES)) generate.o
+OBJS := $(patsubst %.c, %.o, $(SOURCES)) test-gen-asm.o
 # OBJS := $(NAME).o
 CFLAGS := $(filter-out -Og,$(CFLAGS))
 CFLAGS += -O3
@@ -31,8 +31,6 @@ $(OBJS): $(DEPS)
 	$(CC) $(CFLAGS) -c $< -o $@
 %.o: %.S
 	$(CC) -c $(CPP_ASFLAGS) $< -o $@
-%.o: %.s
-	$(AS) $< -o $@
 
 # rules to generate .elf->.list->.bin
 %.elf: $(MEMMAP) $(OBJS) $(DEPS) 
