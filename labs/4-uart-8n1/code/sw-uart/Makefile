@@ -1,4 +1,4 @@
-NAME := ping-pong
+NAME := sw-uart
 
 # check that your path is defined.
 ifndef CS140E_PATH
@@ -21,7 +21,7 @@ CFLAGS += -O3
 DEPS := $(MEMMAP) $(LPI) $(wildcard ./*.h) ./Makefile 
 
 # uncomment the different tests.
-all: libpi $(OBJS) $(NAME).bin run.first
+all: libpi $(OBJS) $(NAME).bin # run.first
 
 run.first:
 	my-install /dev/cu.SLAB_USBtoUART ./$(NAME).bin
