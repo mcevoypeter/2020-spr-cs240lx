@@ -1,3 +1,5 @@
+#ifndef __NEOPIXEL__
+#define __NEOPIXEL__
 // need to pass context around since we can have multiple neopixel strings.
 struct neo_handle;
 typedef struct neo_handle *neo_t;
@@ -17,3 +19,4 @@ void neopix_flush(neo_t h);
 void neopix_fast_clear(neo_t h, unsigned upto);
 // same: but write all pixels in <h>
 void neopix_clear(neo_t h);
+#endif

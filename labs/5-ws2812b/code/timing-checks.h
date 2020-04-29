@@ -31,6 +31,7 @@ time_check(const char *fn, int pin, void (*fp)(unsigned), int exp) {
 	unsigned s = cycle_cnt_read();
 	unsigned e = cycle_cnt_read();
 	unsigned overhead = e - s;
+    printk("%s: expected %u cycle overhead, got %u cycle overhead\n", fn, 8, overhead);
 	assert(overhead==8);
 
 	dev_barrier();
@@ -59,7 +60,6 @@ static void checktreset(unsigned);
 static void time_usec(int pin) {
 
 #define run(str, f,exp,pin) do {			\
-    asm volatile (".align 4");                  \
 	unsigned b = get_raw_time();		\
 	f(pin); f(pin); f(pin); f(pin); f(pin);		\
 	f(pin); f(pin); f(pin); f(pin); f(pin);		\

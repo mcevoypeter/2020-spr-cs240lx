@@ -18,8 +18,9 @@ const unsigned pix_pin = 21;
 // crude routine to write a pixel at a given location.
 // XXX: do we have to do the membarriers?
 void place_cursor(neo_t h, int i) {
-    neopix_write(h,i-2,0xff,0,0);
-    neopix_write(h,i-1,0,0xff,0);
+    neopix_write(h,i-2,0,0,0);
+    /*neopix_write(h,i-1,0,0xff,0);*/
+    neopix_write(h,i-1,0xff,0,0);
     neopix_write(h,i,0,0,0xff);
     neopix_flush(h);
 }
