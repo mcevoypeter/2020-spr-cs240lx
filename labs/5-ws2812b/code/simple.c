@@ -25,6 +25,39 @@ void place_cursor(neo_t h, int i) {
     neopix_flush(h);
 }
 
+void write_five(neo_t h, unsigned cur_pixel, unsigned outer,
+        unsigned middle, unsigned inner) {
+    neopix_write(h, cur_pixel-2, 
+            (outer >> 16) & 0xff,
+            (outer >> 8) & 0xff,
+            outer & 0xff);
+    neopix_write(h, cur_pixel-1, 
+            (middle >> 16) & 0xff,
+            (middle >> 8) & 0xff,
+            middle & 0xff);
+    neopix_write(h, cur_pixel,
+            (inner >> 16) & 0xff,
+            (inner >> 8) & 0xff,
+            inner & 0xff);
+    neopix_write(h, cur_pixel+1, 
+            (middle >> 16) & 0xff,
+            (middle >> 8) & 0xff,
+            middle & 0xff);
+    neopix_write(h, cur_pixel+2, 
+            (outer >> 16) & 0xff,
+            (outer >> 8) & 0xff,
+            outer & 0xff);
+}
+
+enum {
+    red = 0xff0000,
+    green = 0xff00,
+    blue = 0xff,
+    yellow = 0xffff00,
+    orange = 0xffa500,
+    purple = 0x800080
+};
+
 void notmain(void) {
     uart_init();
 
@@ -42,6 +75,7 @@ void notmain(void) {
     // part 1: check your timings for t0l, t1h, t1l, t0l.
     check_timings(pix_pin);
 
+#if 0
     // part2: turn on one pixel to blue.
     // make sure you can:
     //  1. write different colors.
@@ -53,7 +87,7 @@ void notmain(void) {
     // part 3: make sure when you implement the neopixel 
     // interface works and pushes a pixel around your light
     // array.
-    unsigned npixels = 60;  // you'll have to figure this out.
+    unsigned npixels = 30;  // you'll have to figure this out.
     neo_t h = neopix_init(pix_pin, npixels);
     unsigned start = timer_get_usec();
     while(1) {
@@ -64,8 +98,33 @@ void notmain(void) {
             }
         }
     }
+#endif
 
     // part 4:   do some kind of interesting trick with your light strip.
+    printk("let's get creative...\n");
+    unsigned npixels = 30;
+    unsigned cur_pixel = 0;
+    unsigned left = 1;
+    neo_t h = neopix_init(pix_pin, npixels);
+    while (1) {
+        write_five(h, cur_pixel, yellow, orange, red);
+        write_five(h, npixels-cur_pixel, green, blue, purple);
+        neopix_flush(h);
+        delay_ms(50);
+        write_five(h, cur_pixel, 0, 0, 0);
+        write_five(h, npixels-cur_pixel, 0, 0, 0);
+        neopix_flush(h);
+        delay_ms(50);
+        if (left) {
+            cur_pixel++;        
+            if (cur_pixel == npixels-1)
+                left = 0;
+        } else {
+            cur_pixel--;
+            if (cur_pixel == 0)
+                left = 1;
+        }
+    }
 
     delay_ms(1000*3);
 	clean_reboot();

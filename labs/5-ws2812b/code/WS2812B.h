@@ -134,7 +134,7 @@ static inline void gpio_set_off_raw(unsigned pin) {
 // depending on its alignment.  Can experiment if need be.
 // #pragma GCC optimize ("align-functions=16")
 
-static unsigned const compensation = 16;
+static unsigned const compensation = 30;
 
 // two helpers for implementing T1H,T0H,T0L,T1L
 
