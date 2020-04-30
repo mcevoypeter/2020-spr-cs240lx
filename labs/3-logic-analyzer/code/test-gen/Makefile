@@ -11,7 +11,7 @@ CFLAGS += -Wno-unused-function -Wno-unused-variable
 
 # if you want to compile everything in a directory, do something like this.
 SOURCES := $(wildcard ./*.c) 
-OBJS := $(patsubst %.c, %.o, $(SOURCES)) test-gen-asm.o
+OBJS := $(patsubst %.c, %.o, $(SOURCES))
 # OBJS := $(NAME).o
 CFLAGS := $(filter-out -Og,$(CFLAGS))
 CFLAGS += -O3
