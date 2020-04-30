@@ -36,13 +36,12 @@ void test_gen(unsigned pin, unsigned N, unsigned ncycle) {
 }
 
 void notmain(void) {
-    /*delay_ms(5*1000);*/
     int pin = 21;
     gpio_set_output(pin);
     cycle_cnt_init();
 
     // keep it seperate so easy to look at assembly.
-    test_gen(pin, 11, CYCLE_PER_FLIP);
+    test_gen(pin, MAX_SAMPLES, CYCLE_PER_FLIP);
 
     clean_reboot();
 }
