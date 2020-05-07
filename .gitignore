@@ -13,3 +13,5 @@
 **/*.swp
 **/*staff
 **/*tags
+**/*.fake
+**/*.out
