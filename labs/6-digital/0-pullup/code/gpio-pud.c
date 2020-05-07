@@ -6,7 +6,11 @@ struct gpio_pud {
     unsigned gppud;
     unsigned gppud_clk[2];
 };
-static volatile struct gpio_pud *gpio_pud = (struct gpio_pud *)0x20200094;
+/*static volatile struct gpio_pud *gpio_pud = (struct gpio_pud *)0x20200094;*/
+static volatile void *gppud = (void *)0x20200094;
+static volatile void *gppud_clk0 = (void *)0x20200098;
+/*static volatile void *gppud_clk1 = (void *)0x2020009c;*/
+
 
 // see p. 101 of Broadcom BCM2835 peripherals document
 enum {
@@ -22,55 +26,64 @@ enum {
 #define SHIFT(x) (x % 32)
 
 void gpio_set_pullup(unsigned pin) {
+    dev_barrier();
+
     if (pin > MAX_PIN)
         return;
-
-    // set the control signal and delay 150 cycles
-    gpio_pud->gppud = pull_up;
-    delay_us(DELAY);
-
-    // clock the control signal and delay 150 cycles
-    gpio_pud->gppud_clk[BANK(pin)] |= 1 << SHIFT(pin);
-    delay_us(DELAY);
     
-    // remove the control signal and clock
-    gpio_pud->gppud = disable;
-    unsigned mask = ~(1 << SHIFT(pin));
-    gpio_pud->gppud_clk[BANK(pin)] &= mask;
+    put32(gppud, pull_up); 
+    delay_us(DELAY);
+
+    put32(gppud_clk0, 1 << SHIFT(pin));
+    delay_us(DELAY);
+
+    put32(gppud, disable);
+    delay_us(DELAY);
+
+    put32(gppud_clk0, disable);
+    delay_us(DELAY);
+
+    dev_barrier();
 }
 
 void gpio_set_pulldown(unsigned pin) {
+    dev_barrier();
+
     if (pin > MAX_PIN)
         return;
 
-    // set the control signal and delay 150 cycles
-    gpio_pud->gppud = pull_down;
+    put32(gppud, pull_down); 
     delay_us(DELAY);
 
-    // clock the control signal and delay 150 cycles
-    gpio_pud->gppud_clk[BANK(pin)] |= 1 << SHIFT(pin);
+    put32(gppud_clk0, 1 << SHIFT(pin));
+    delay_us(DELAY);
+
+    put32(gppud, disable);
+    delay_us(DELAY);
+
+    put32(gppud_clk0, disable);
     delay_us(DELAY);
     
-    // remove the control signal and clock
-    gpio_pud->gppud = disable;
-    unsigned mask = ~(1 << SHIFT(pin));
-    gpio_pud->gppud_clk[BANK(pin)] &= mask;
+    dev_barrier();
 }
 
 void gpio_pud_off(unsigned pin) { 
+    dev_barrier(); 
+
     if (pin > MAX_PIN)
         return;
 
-    // set the control signal and delay 150 cycles
-    gpio_pud->gppud = disable;
+    put32(gppud, disable); 
     delay_us(DELAY);
 
-    // clock the control signal and delay 150 cycles
-    gpio_pud->gppud_clk[BANK(pin)] |= 1 << SHIFT(pin);
+    put32(gppud_clk0, 1 << SHIFT(pin));
     delay_us(DELAY);
-    
-    // remove the control signal and clock
-    gpio_pud->gppud = disable;
-    unsigned mask = ~(1 << SHIFT(pin));
-    gpio_pud->gppud_clk[BANK(pin)] &= mask;
+
+    put32(gppud, disable);
+    delay_us(DELAY);
+
+    put32(gppud_clk0, disable);
+    delay_us(DELAY);
+
+    dev_barrier();
 }
