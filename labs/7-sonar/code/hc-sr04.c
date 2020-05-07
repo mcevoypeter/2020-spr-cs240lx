@@ -5,7 +5,13 @@
 //  1. gpio_read(pin) != v ==> return 1.
 //  2. <timeout> microseconds have passed ==> return 0
 int read_while_eq(int pin, int v, unsigned timeout) {
-    unimplemented();
+    unsigned start = timer_get_usec();
+    for (;;) {
+        if (gpio_read(pin) != v)
+            return 1;
+        if (timer_get_usec() > start + timeout)
+            return 0;
+    }
 }
 
 // initialize:
@@ -26,7 +32,12 @@ int read_while_eq(int pin, int v, unsigned timeout) {
 // The comments on the sparkfun product page might be helpful.
 hc_sr04_t hc_sr04_init(int trigger, int echo) {
     hc_sr04_t h = { .trigger = trigger, .echo = echo };
-    unimplemented();
+
+    gpio_set_output(h.trigger);
+    gpio_write(h.trigger, 0);
+    gpio_set_input(h.echo);
+    gpio_set_pulldown(h.echo);
+
     return h;
 }
 
@@ -49,6 +60,22 @@ hc_sr04_t hc_sr04_init(int trigger, int echo) {
 // 	signal.
 //
 int hc_sr04_get_distance(hc_sr04_t *h, unsigned timeout_usec) {
-    unimplemented();
-    return -1;
+    // send 10-microsecond pulse
+    gpio_write(h->trigger, 1);
+    delay_us(10);
+    gpio_write(h->trigger, 0);
+    
+    // still not sure why we need the delay here
+    delay_us(148);
+
+#   define TIMEOUT 100000
+    if (read_while_eq(h->echo, 0, TIMEOUT) == 0)
+        return -1;
+    unsigned start = timer_get_usec();
+    if (read_while_eq(h->echo, 1, TIMEOUT) == 0)
+        return -1;
+   
+    unsigned prop_delay = timer_get_usec() - start;
+
+    return prop_delay / 148;
 }
