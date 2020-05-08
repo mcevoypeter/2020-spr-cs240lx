@@ -74,23 +74,22 @@ typedef struct {
     unsigned scale;
 } gyro_t;
 
-static int mdps_raw(uint8_t hi, uint8_t lo) {
-    unimplemented();
+static short mdps_raw(uint8_t hi, uint8_t lo) {
+    return (hi << 8) | lo;
 }
 
 // returns m degree per sec
 static int mdps_scaled(int v, int dps_scale) {
-    unimplemented();
+    return (v * dps_scale) / 1000; 
 }
-
 
 // see p 15 of the datasheet.  confusing we have to do this.
 unsigned dps_to_scale(unsigned fs) {
     switch(fs) {
-    case 245: unimplemented();
-    case 500: unimplemented();
-    case 1000: unimplemented();
-    case 2000: unimplemented();
+    case 245: return 8750;
+    case 500: return 17500; 
+    case 1000: return 35000;
+    case 2000: return 70000;
     default: assert(0);
     }
 }
@@ -98,13 +97,13 @@ unsigned dps_to_scale(unsigned fs) {
 // takes in raw data and scales it.
 static imu_xyz_t gyro_scale(gyro_t *h, imu_xyz_t xyz) {
     int s = h->scale;
-    int x = mdps_scaled(xyz.x, s);
-    int y = mdps_scaled(xyz.y, s);
-    int z = mdps_scaled(xyz.z, s);
+    int x = mdps_scaled(s, xyz.x);
+    int y = mdps_scaled(s, xyz.y);
+    int z = mdps_scaled(s, xyz.z);
     return xyz_mk(x,y,z);
 }
 
-gyro_t init_gyro(uint8_t addr, lsm6ds33_dps_t dps, lsm6ds33_hz_t hz) {
+gyro_t gyro_init(uint8_t addr, lsm6ds33_dps_t dps, lsm6ds33_hz_t hz) {
     dev_barrier();
 
     if(!legal_dps(dps))
@@ -112,19 +111,43 @@ gyro_t init_gyro(uint8_t addr, lsm6ds33_dps_t dps, lsm6ds33_hz_t hz) {
     if(!legal_gyro_hz(hz)) 
         panic("invalid hz: %x\n", hz);
 
+    gyro_t gyro = { .addr = addr, .hz = hz, .dps = dps, .scale = dps_to_scale(dps >> 16) };
+
+    // configure gyroscope (app note p23)
+    imu_wr(gyro.addr, CTRL10_C, 0x38);     // enable gyro X, Y, Z axes
+
     // gyroscope turn off / turn on time = 80ms!  app note p22
-    unimplemented();
+    delay_ms(80);
+
+    imu_wr(gyro.addr, CTRL2_G, (hz << 4) | (dps << 2));      // gyro = 416Hz (high-performance mode)
+    /*imu_wr(gyro.addr, INT1_CTRL, 0x2);     // gyro data ready interrupt on INT1*/
+
+    // TODO: read-modify-write to preserve `IF_INC`
+    imu_wr(gyro.addr, CTRL3_C, 1 << BDU);     // enable block update 
+
+    // TODO: discard samples 
+
+    // wait for device to boot
+    delay_ms(20);
 
     dev_barrier();
+
+    return gyro;
 }
 
 // if GDA of status reg (bit offset = 1) is 1 then there is data.
 int gyro_has_data(gyro_t *h) {
-    unimplemented();
+    return (imu_rd(h->addr, STATUS_REG) >> GDA) & 1;
 }
 
 imu_xyz_t gyro_rd(gyro_t *h) {
-    unimplemented();
+    while (!gyro_has_data(h));
+
+    short x = mdps_raw(imu_rd(h->addr, OUTX_H_G), imu_rd(h->addr, OUTX_L_G));
+    short y = mdps_raw(imu_rd(h->addr, OUTY_H_G), imu_rd(h->addr, OUTY_L_G));
+    short z = mdps_raw(imu_rd(h->addr, OUTZ_H_G), imu_rd(h->addr, OUTZ_L_G));
+
+    return xyz_mk(x, y, z);
 }
 
 static void test_dps(int expected, uint8_t h, uint8_t l, int dps_scale) {
@@ -166,9 +189,9 @@ void do_gyro_test(void) {
     test_dps(-200, 0xa6, 0xb7, scale);
     printk("dps scaling passed\n");
 
-    gyro_t h = init_gyro(lsm6ds33_default_addr, lsm6ds33_245dps, lsm6ds33_208hz);
+    gyro_t h = gyro_init(lsm6ds33_default_addr, lsm6ds33_245dps, lsm6ds33_208hz);
 
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 100; i++) {
         imu_xyz_t v = gyro_rd(&h);
         printk("gyro raw values: x=%d,y=%d,z=%d\n", v.x,v.y,v.z);
 

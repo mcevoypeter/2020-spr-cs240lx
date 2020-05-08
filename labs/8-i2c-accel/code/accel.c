@@ -60,8 +60,9 @@ static short mg_raw(uint8_t hi, uint8_t lo) {
 }
 
 // returns milligauss, integer
-#define SHORT_MAX (1 << 15)
 static int mg_scaled(int v, int mg_scale) {
+    if (mg_scale > 16)
+        panic("accel: mg_scale of %d is greater than 16\n", mg_scale);
     // `v` can be at most `SHORT_MAX` and at least `SHORT_MIN`
     // scale `v` so that it fits in the range [-2000*mg_scale, 2000*mg_scale]
     return (1000 * mg_scale * v) / SHORT_MAX;
@@ -80,15 +81,14 @@ static imu_xyz_t xyz_mk(int x, int y, int z) {
 // takes in raw data and scales it.
 imu_xyz_t accel_scale(accel_t *h, imu_xyz_t xyz) {
     int g = h->g;
-    int x = mg_scaled(h->g, xyz.x);
-    int y = mg_scaled(h->g, xyz.y);
-    int z = mg_scaled(h->g, xyz.z);
+    int x = mg_scaled(xyz.x, h->g);
+    int y = mg_scaled(xyz.y, h->g);
+    int z = mg_scaled(xyz.z, h->g);
     return xyz_mk(x,y,z);
 }
 
-#define XLDA 1
 int accel_has_data(accel_t *h) {
-    return imu_rd(h->addr, STATUS_REG) & XLDA;
+    return (imu_rd(h->addr, STATUS_REG) >> XLDA) & 1;
 }
 
 // block until there is data and then return it (raw)
@@ -106,13 +106,14 @@ imu_xyz_t accel_rd(accel_t *h) {
     unsigned mg_scale = h->g;
     uint8_t addr = h->addr;
 
-    // wait for new data to be available (p.23)
+    // wait for new data to be available (appnote p.23)
     while (!accel_has_data(h));
-
+    
+    // TODO: use `imu_rdn` instead
     short x = mg_raw(imu_rd(addr, OUTX_H_XL), imu_rd(addr, OUTX_L_XL));
     short y = mg_raw(imu_rd(addr, OUTY_H_XL), imu_rd(addr, OUTY_L_XL));
     short z = mg_raw(imu_rd(addr, OUTZ_H_XL), imu_rd(addr, OUTZ_L_XL));
-    
+
     return xyz_mk(x, y, z);
 }
 
@@ -145,20 +146,22 @@ accel_t accel_init(uint8_t addr, lsm6ds33_g_t g, lsm6ds33_hz_t hz) {
     unsigned g_bits = g&0xff;
     assert(legal_g_bits(g_bits));
    
-    accel_t accel = { .addr = addr, .hz = hz, .g = g };
+    accel_t accel = { .addr = addr, .hz = hz, .g = g_scale };
 
-    // start-up sequence on p.23
-    delay_ms(20);
+    // start-up sequence (appnote p.23)
 
     // configure the accelerometer
     imu_wr(accel.addr, CTRL9_XL, 0x38);     // enable acc X, Y, Z axes
-    imu_wr(accel.addr, CTRL1_XL, 0x60);     // acc = 416Hz (high-performance mode)
+    imu_wr(accel.addr, CTRL1_XL, (hz << 4) | (g_scale << 2));     // acc = 416Hz (high-performance mode)
     imu_wr(accel.addr, INT1_CTRL, 0x1);     // acc data ready interrupt on INT1
+    imu_wr(accel.addr, CTRL3_C, 1 << BDU);  // enable block update 
 
-    // configure gyroscope
-    imu_wr(accel.addr, CTRL10_C, 0x38);     // enable gyro X, Y, Z axes
-    imu_wr(accel.addr, CTRL2_G, 0x60);      // gyro = 416Hz (high-performance mode)
-    imu_wr(accel.addr, INT1_CTRL, 0x2);     // gyro data ready interrupt on INT1
+    // TODO: discard samples 
+    
+    // wait for device to boot
+    delay_ms(20);
+
+    dev_barrier();
 
     return accel;
 }

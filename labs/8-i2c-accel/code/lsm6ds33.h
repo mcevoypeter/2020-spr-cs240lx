@@ -1,6 +1,8 @@
 #ifndef __LSM6DS33_H__
 #define __LSM6DS33_H__
 
+#define SHORT_MAX (1 << 15)
+
 enum { lsm6ds33_default_addr = 0b1101011 }; // this is the gyro/accel;
 
 // accel
@@ -168,6 +170,12 @@ typedef struct {
     unsigned hz;
     unsigned g;
 } accel_t;
+
+typedef enum {
+    XLDA = 0,
+    GDA = 1,
+    BDU = 6
+} lsm6ds33_reg_offset_t;
 
 
 #endif
