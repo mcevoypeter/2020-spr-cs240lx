@@ -39,47 +39,49 @@ unsigned scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) 
 
     // Wait for the first transition.
     unsigned val = fast_gpio_read(pin);
-    while (fast_gpio_read(pin) == val);
+    unsigned start = cycle_cnt_read();
+    while (fast_gpio_read(pin) == val)
+        start = cycle_cnt_read();
     val = 1-val;
     unsigned init_val = val;
 
-    unsigned start = cycle_cnt_read();
     unsigned stop = start + max_cycles;
     while (cycle_cnt < stop && n < n_max) {
         for (i = 0; i < CYCLE_PER_FLIP; i++) {
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
+            cycle_cnt = cycle_cnt_read();
             if (fast_gpio_read(pin) != val) {
-                cycle_cnt = cycle_cnt_read();
                 break;
             }
         }
+        // TODO: add more realistic timeout
         if (i == CYCLE_PER_FLIP)
             break;
         val = 1-val;
@@ -121,9 +123,11 @@ void notmain(void) {
 
     log_ent_t log[MAX_SAMPLES];
 
-    unsigned n = scope(pin, log, MAX_SAMPLES, cycles_per_sec(1));
+    for (unsigned i = 0; i < 10; i++) {
+        unsigned n = scope(pin, log, MAX_SAMPLES, cycles_per_sec(1));
 
-    // <CYCLE_PER_FLIP> is in ../scope-constants.h
-    dump_samples(log, n, CYCLE_PER_FLIP);
+        // <CYCLE_PER_FLIP> is in ../scope-constants.h
+        dump_samples(log, n, CYCLE_PER_FLIP);
+    }
     clean_reboot();
 }
