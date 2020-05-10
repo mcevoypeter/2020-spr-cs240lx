@@ -1,4 +1,4 @@
-NAME := sw-uart
+NAME := driver.c
 
 # check that your path is defined.
 ifndef CS140E_PATH
