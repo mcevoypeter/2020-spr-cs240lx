@@ -8,6 +8,8 @@
 #define CYCLES_PER_BIT (700*10000*1000UL)/BAUD
 #define MAX_PINS 8
 
+#define TWO 0
+
 static uart_type_t uart_type;
 static unsigned pin_cnt;
 my_sw_uart_t my_sw_uart_init(const unsigned *txs, const unsigned tx_cnt, 
@@ -74,6 +76,7 @@ static inline int my_sw_uart_parallel_get8(my_sw_uart_t *uart) {
     while (fast_gpio_read(low_rx) != 0);
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT + CYCLES_PER_BIT/2);
 
+#if TWO
     b |= fast_gpio_readn(low_rx, pin_cnt);
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
     b |= fast_gpio_readn(low_rx, pin_cnt) << 2;
@@ -82,13 +85,11 @@ static inline int my_sw_uart_parallel_get8(my_sw_uart_t *uart) {
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
     b |= fast_gpio_readn(low_rx, pin_cnt) << 6;
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
-
-#if 0
-    unsigned iters = 8 >> (pin_cnt >> 1);
-    for (unsigned i = 0; i < iters; i++) {
-        b |= (fast_gpio_readn(low_rx, pin_cnt) << pin_cnt*i);
-        delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
-    }
+#else
+    b |= fast_gpio_readn(low_rx, pin_cnt);
+    delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
+    b |= fast_gpio_readn(low_rx, pin_cnt) << 4;
+    delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
 #endif
 
     // Wait for stop bit.
@@ -135,6 +136,7 @@ static inline void my_sw_uart_parallel_put8(my_sw_uart_t *uart, unsigned char b)
     fast_gpio_write(low_tx, 0);
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
 
+#if TWO
     fast_gpio_writen(low_tx, pin_cnt, b & 3);
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
     fast_gpio_writen(low_tx, pin_cnt, (b >> 2) & 3);
@@ -143,13 +145,11 @@ static inline void my_sw_uart_parallel_put8(my_sw_uart_t *uart, unsigned char b)
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
     fast_gpio_writen(low_tx, pin_cnt, (b >> 6) & 3);
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
-#if 0
-    unsigned iters = 8 >> (pin_cnt >> 1);
-    unsigned mask = ~(-1 << pin_cnt);
-    for (unsigned i = 0; i < iters; i++) {
-        fast_gpio_writen(low_tx, pin_cnt, (b >> 2*i) & mask);
-        delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
-    }
+#else
+    fast_gpio_writen(low_tx, pin_cnt, b & 0xf);
+    delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
+    fast_gpio_writen(low_tx, pin_cnt, (b >> 4) & 0xf);
+    delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT);
 #endif
 
     // Write stop bit for `CYCLES_PER_BIT` cycles.

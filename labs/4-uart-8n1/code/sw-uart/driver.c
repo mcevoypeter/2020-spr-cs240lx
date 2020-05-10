@@ -4,16 +4,20 @@
 #include "../fast-gpio.h"
 #include "my-sw-uart.h"
 
-#define WORD 0
+#define WORD 1
 #define PARALLEL 1
 
 static const unsigned txs[] = {
     16,
-    17
+    17,
+    18,
+    19
 };
 static const unsigned rxs[] = {
     20,
-    21
+    21,
+    22,
+    23
 };
 
 #if WORD
