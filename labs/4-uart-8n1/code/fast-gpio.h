@@ -1,7 +1,9 @@
 #ifndef __FAST_GPIO_H__
 #define __FAST_GPIO_H__
 
-volatile unsigned *LEV0 = (unsigned *)0x20200034;
+#ifndef LEV0
+#define LEV0 ((volatile unsigned *)0x20200034)
+#endif
 inline unsigned fast_gpio_read(unsigned pin) {
     return (*LEV0 >> pin) & 1;
 }
@@ -12,8 +14,13 @@ inline unsigned fast_gpio_readn(unsigned low_pin, unsigned n) {
 }
 
 
-volatile unsigned *SET0 = (unsigned *)0x2020001c;
-volatile unsigned *CLR0 = (unsigned *)0x20200028;
+#ifndef SET0 
+#define SET0 ((volatile unsigned *)0x2020001c)
+#endif
+
+#ifndef CLR0 
+#define CLR0 ((volatile unsigned *)0x20200028)
+#endif
 inline void fast_gpio_write(unsigned pin, unsigned val) {
     if (val)
         *SET0 = 1 << pin;

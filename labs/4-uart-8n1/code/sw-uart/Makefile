@@ -1,4 +1,4 @@
-NAME := driver.c
+NAME := driver
 
 # check that your path is defined.
 ifndef CS140E_PATH

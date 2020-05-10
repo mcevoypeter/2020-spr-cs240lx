@@ -18,16 +18,11 @@ typedef struct {
 
 
 my_sw_uart_t my_sw_uart_init(const unsigned *txs, const unsigned tx_cnt, 
-        const unsigned *rxs, const unsigned rx_cnt);
+        const unsigned *rxs, const unsigned rx_cnt, uart_type_t type);
 
-int my_sw_uart_serial_get8(my_sw_uart_t *uart);
-void my_sw_uart_serial_put8(my_sw_uart_t *uart, unsigned char b);
-int my_sw_uart_serial_get32(my_sw_uart_t *uart);
-void my_sw_uart_serial_put32(my_sw_uart_t *uart, unsigned w);
-
-int my_sw_uart_parallel_get8(my_sw_uart_t *uart);
-void my_sw_uart_parallel_put8(my_sw_uart_t *uart, unsigned char b);
-int my_sw_uart_parallel_get32(my_sw_uart_t *uart);
-void my_sw_uart_parallel_put32(my_sw_uart_t *uart, unsigned w);
+int my_sw_uart_get8(my_sw_uart_t *uart);
+void my_sw_uart_put8(my_sw_uart_t *uart, unsigned char b);
+int my_sw_uart_get32(my_sw_uart_t *uart);
+void my_sw_uart_put32(my_sw_uart_t *uart, unsigned w);
 
 #endif
