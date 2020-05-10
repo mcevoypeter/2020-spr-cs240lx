@@ -1,8 +1,6 @@
 #ifndef __MY_SW_UART_H__
 #define __MY_SW_UART_H__
 
-#define BAUD 115200
-#define CYCLES_PER_BIT (700*10000*1000UL)/BAUD
 #define MAX_PINS 8
 
 typedef enum {

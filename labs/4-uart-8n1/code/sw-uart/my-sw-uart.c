@@ -4,9 +4,8 @@
 #include "my-sw-uart.h"
 #include "../fast-gpio.h"
 
-#define BAUD 115200
+#define BAUD (40*115200)
 #define CYCLES_PER_BIT (700*10000*1000UL)/BAUD
-#define MAX_PINS 8
 
 #define TWO 0
 

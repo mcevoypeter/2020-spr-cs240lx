@@ -60,8 +60,10 @@ static void server() {
         bytes[i] = my_sw_uart_get(&server_uart);
     }
     unsigned end = cycle_cnt_read();
-    for (unsigned i = 0; i < n; i++) 
+    for (unsigned i = 0; i < n; i++) {
+        assert(i == bytes[i]);
         printk("%u: server read %u\n", i, bytes[i]);
+    }
 
     printk("server done\n");
     printk("exchanged %u %s in %s\n", n, WORD ? "words" : "bytes", 
@@ -84,8 +86,10 @@ static void client() {
         my_sw_uart_put(&client_uart, i);
     }
     unsigned end = cycle_cnt_read();
-    for (unsigned i = 0; i < n; i++)
+    for (unsigned i = 0; i < n; i++) {
+        assert(i == bytes[i]);
         printk("%u: client read %u\n", i, bytes[i]);
+    }
 
     printk("client done\n");
     printk("exchanged %u %s in %s\n", n, WORD ? "words" : "bytes", 
