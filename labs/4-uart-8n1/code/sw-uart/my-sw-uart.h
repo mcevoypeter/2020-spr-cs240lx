@@ -12,6 +12,7 @@ typedef enum {
 
 typedef struct {
     unsigned txs[MAX_PINS], rxs[MAX_PINS];
+    unsigned tx_cnt, rx_cnt;
     unsigned baud;
     unsigned cycle_per_bit;
 } my_sw_uart_t;
