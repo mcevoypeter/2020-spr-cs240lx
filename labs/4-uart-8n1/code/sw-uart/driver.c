@@ -4,16 +4,16 @@
 #include "../fast-gpio.h"
 #include "my-sw-uart.h"
 
-#define WORD 1
+#define WORD 0
 #define PARALLEL 1
 
 static const unsigned txs[] = {
-    19,
-    20
+    16,
+    17
 };
 static const unsigned rxs[] = {
-    21,
-    22
+    20,
+    21
 };
 
 #if WORD
@@ -92,6 +92,7 @@ static void client() {
 void notmain(void) {
     enable_cache();
     cycle_cnt_init();
+    printk("rxs[0] = %u\n", rxs[0]);
     if(!gpio_read(rxs[0]))
         server();
     else
