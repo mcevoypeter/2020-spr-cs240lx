@@ -71,6 +71,8 @@ static inline int my_sw_uart_parallel_get8(my_sw_uart_t *uart) {
     unsigned low_rx = uart->rxs[0];
     int b = 0;
     
+    // TODO: avoid cumulative error (i.e. set a start cycle count and go from there)
+
     // Wait for start bit.
     while (fast_gpio_read(low_rx) != 0);
     delay_ncycles(cycle_cnt_read(), CYCLES_PER_BIT + CYCLES_PER_BIT/2);
@@ -130,6 +132,8 @@ static inline void my_sw_uart_parallel_put8(my_sw_uart_t *uart, unsigned char b)
     // Assume that `cycle_cnt_init` has already been called.
     
     unsigned low_tx = uart->txs[0];
+
+    // TODO: avoid cumulative error (i.e. set a start cycle count and go from there)
 
     // Write start bit for `CYCLES_PER_BIT` cycles.
     fast_gpio_write(low_tx, 0);
