@@ -30,7 +30,7 @@ void adc_reset(void) {
 //  2. read the 2 bytes that come back.
 static void adc_write16(uint8_t dev_addr, uint8_t reg, uint16_t v) {
     uint8_t data[] = { reg, v >> 8, v & 0xff };    
-    if (!i2c_write(dev_addr, &data, sizeof(data)))
+    if (!i2c_write(dev_addr, data, sizeof(data)))
         panic("adc_write16: i2c_write(dev_addr, data, sizeof(data)) returned 0\n");
 }
 
@@ -117,4 +117,3 @@ void notmain(void) {
 	}
 	clean_reboot();
 }
-

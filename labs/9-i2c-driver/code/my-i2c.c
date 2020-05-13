@@ -163,11 +163,35 @@ static volatile RPI_i2c *i2c = (void*)0x20804000; 	// BSC1
 int i2c_write(unsigned addr, uint8_t data[], unsigned nbytes) {
     dev_barrier();
 
-    // wait until any previous xfer over.
+    // wait for previous xfer to complete
+    while (i2c->status.ta != 0);
 
-    unimplemented();
+    // assert that the FIFO is empty
+    assert(i2c->status.txe == 1);
+
+    // clear
+    i2c->status.clktk = 1;
+    i2c->status.err = 1;
+    i2c->status.done = 1;
+
+    i2c->dev_addr = addr;
+    i2c->control.read = 0;
+
+    // start a new transfer
+    i2c->control.st = 1;
+
+    // write number of bytes to be written
+    i2c->dlen = nbytes;
+    for (unsigned i = 0; i < nbytes; i++) {
+        // wait for FIFO to have space
+        while (i2c->status.txd != 1);
+        i2c->fifo = data[i];
+    }
 
     // wait for current xfer to complete
+    while (i2c->status.done != 1);
+    // signal done
+    i2c->status.done = 1;
 
     dev_barrier();
 	return 1;
@@ -177,12 +201,38 @@ int i2c_write(unsigned addr, uint8_t data[], unsigned nbytes) {
 int i2c_read(unsigned addr, uint8_t data[], unsigned nbytes) {
     dev_barrier();
 
-    // wait until any previous xfer over.
+    // wait for previous xfer to complete
+    while (i2c->status.ta != 0);
 
-    unimplemented();
+    // clear
+
+    //get_T
+
+    i2c->status.clktk = 1;
+    i2c->status.err = 1;
+    i2c->status.done = 1;
+
+    i2c->dev_addr = addr;
+    i2c->control.read = 1;
+
+    // start a new xfer
+    i2c->control.st = 1;
+    
+    // write number of bytes to be read
+    i2c->dlen = nbytes;
+
+    // put_T
+
+    for (unsigned i = 0; i < nbytes; i++) {
+        // wait for FIFO to become non-empty
+        while (i2c->status.rxd != 1);
+        data[i] = i2c->fifo;
+    }
 
     // wait for current xfer to complete
-
+    while (i2c->status.done != 1);
+    // signal done
+    i2c->status.done = 1;
 
     dev_barrier();
 	return 1;
@@ -194,13 +244,22 @@ static void check_layout(void);
 // is the i2c dev different than gpio?  yes?  but
 // can only talk to it via gpio so maybe we don't
 // need dev barriers.
+#define GPIO_SDA 2
+#define GPIO_SCL 3
 void i2c_init(void) {
 	check_layout();
 
     // we don't know what was happening before.
 	dev_barrier();
+    
+    gpio_set_function(GPIO_SDA, GPIO_FUNC_ALT0);
+    gpio_set_function(GPIO_SCL, GPIO_FUNC_ALT0);
 
-    unimplemented();
+    dev_barrier();
+
+    i2c->status.err = 1;        // reset error field
+    i2c->status.clktk = 1;      // reset clock stretch timeout field
+    i2c->control.i2cen = 1;     // enable BSC controller
 
     // don't know what device is going to get used next.
 	dev_barrier();
