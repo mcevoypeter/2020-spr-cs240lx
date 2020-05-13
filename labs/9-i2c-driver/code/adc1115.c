@@ -29,12 +29,21 @@ void adc_reset(void) {
 //  1. write to the low two bits in the address pointer register. (p27)
 //  2. read the 2 bytes that come back.
 static void adc_write16(uint8_t dev_addr, uint8_t reg, uint16_t v) {
-    unimplemented();
+    uint8_t data[] = { reg, v >> 8, v & 0xff };    
+    if (!i2c_write(dev_addr, &data, sizeof(data)))
+        panic("adc_write16: i2c_write(dev_addr, data, sizeof(data)) returned 0\n");
 }
 
 // read a 16-bit register
 static uint16_t adc_read16(uint8_t dev_addr, uint8_t reg) {
-    unimplemented();
+    if (!i2c_write(dev_addr, &reg, 1))
+        panic("adc_read16: i2c_write(dev_addr, &reg, 1) returned 0\n");
+
+    uint8_t data[2];
+    if (!i2c_read(dev_addr, data, sizeof(data)))
+        panic("adc_read16: i2c_read(dev_addr, data, sizeof(data)) returned 0\n");
+
+    return data[0] << 8 | data[1];
 }
 
 void notmain(void) {
@@ -43,14 +52,12 @@ void notmain(void) {
 	i2c_init();
 	delay_ms(30);   // allow time to settle after init.
 
-    unimplemented();
-
     // 0. set these enums to the right values.
 
     // dev address: p23
-    enum { dev_addr = ?? };
+    enum { dev_addr = 0b1001000 };
     // p27: register names
-    enum { conversion_reg = ??, config_reg = ?? };
+    enum { conversion_reg = 0, config_reg = 1 };
 
     // p28
     // one way to set fields in a register.
@@ -85,11 +92,15 @@ void notmain(void) {
     //  - MODE to continuous.
     //  - DR to 860sps
     // see page 28.
-    unimplemented();
+    uint16_t config_val = PGA(1) | MODE(0) | DR(0b111); 
+    adc_write16(dev_addr, config_reg, config_val);
 
     // 4. read back the config and make sure the fields we set
     // are correct.
-    unimplemented();
+    config_val = adc_read16(dev_addr, config_reg);
+    assert(PGA_V(config_val) == 1);
+    assert(MODE_V(config_val) == 0);
+    assert(DR_V(config_val) == 0b111);
 
     // 5. just loop and get readings.
     //  - vary your potentiometer
