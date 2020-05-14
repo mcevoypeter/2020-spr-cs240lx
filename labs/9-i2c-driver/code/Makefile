@@ -1,6 +1,6 @@
 NAME = adc1115
-I2C = i2c.o
-#I2C = my-i2c.o
+#I2C = i2c.o
+I2C = my-i2c.o
 OBJS = $(NAME).o $(I2C)
 # if you want to compile everything in a directory, do something like this.
 # SOURCES := $(wildcard ./*.c)

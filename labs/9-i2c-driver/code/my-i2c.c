@@ -163,6 +163,8 @@ static volatile RPI_i2c *i2c = (void*)0x20804000; 	// BSC1
 int i2c_write(unsigned addr, uint8_t data[], unsigned nbytes) {
     dev_barrier();
 
+    // TODO: replace raw memory accesses with get32_T and put32_T
+
     // wait for previous xfer to complete
     while (i2c->status.ta != 0);
 
@@ -201,13 +203,12 @@ int i2c_write(unsigned addr, uint8_t data[], unsigned nbytes) {
 int i2c_read(unsigned addr, uint8_t data[], unsigned nbytes) {
     dev_barrier();
 
+    // TODO: replace raw memory accesses with get32_T and put32_T
+
     // wait for previous xfer to complete
     while (i2c->status.ta != 0);
 
     // clear
-
-    //get_T
-
     i2c->status.clktk = 1;
     i2c->status.err = 1;
     i2c->status.done = 1;
@@ -256,6 +257,8 @@ void i2c_init(void) {
     gpio_set_function(GPIO_SCL, GPIO_FUNC_ALT0);
 
     dev_barrier();
+
+    // TODO: replace raw memory accesses with get32_T and put32_T
 
     i2c->status.err = 1;        // reset error field
     i2c->status.clktk = 1;      // reset clock stretch timeout field
