@@ -2,6 +2,7 @@
 // library.
 #include "rpi.h"
 #include "rpi-math.h"
+#include "math.h"
 void notmain(void) {
     double x = 3.1415;
     printk("hello from pi=%f float!!\n", x);
