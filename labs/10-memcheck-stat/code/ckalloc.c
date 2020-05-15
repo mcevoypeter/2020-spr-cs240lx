@@ -40,14 +40,16 @@ static uint32_t hdr_cksum(hdr_t *h) {
 
 // check the header checksum and that its state == ALLOCED or FREED
 static int check_hdr(hdr_t *h) {
-    unimplemented();
+    // XXX
+    return h->cksum == hdr_cksum(h) && 
+        (h->state == ALLOCED || h->state == FREED);
 }
 
 static int check_mem(char *p, unsigned nbytes) {
     int i;
     for(i = 0; i < nbytes; i++) {
         if(p[i] != SENTINAL) {
-            trace("block %p corrupted at offset %d\n", p, nbytes);
+            trace("block 0x%p corrupted at offset %d\n", p, nbytes);
             return 0;
         }
     }
@@ -91,9 +93,16 @@ static void hdr_print(hdr_t *h) {
 void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
     hdr_t *h = 0;
 
-    demand(heap, not initialized?);
+    demand(heap, "not initialized?");
     trace("freeing %p\n", addr);
-    unimplemented();
+
+    // XXX
+    h = b_addr_to_hdr(addr);
+    if (h->state == FREED)
+        trace_panic("header at %p is already free\n", h);
+    h->state = FREED;
+    h->cksum = hdr_cksum(h);
+
     assert(check_block(h));
 }
 
@@ -102,7 +111,7 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     hdr_t *h = 0;
     void *ptr = 0;
 
-    demand(heap, not initialized?);
+    demand(heap, "not initialized?");
     trace("allocating %d bytes\n");
 
     unsigned tot = pi_roundup(nbytes, 8);
@@ -116,9 +125,42 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
         trace_panic("out of memory!  have only %d left, need %d\n", 
             heap_end - heap, n);
 
+    // XXX
+    
+    // create header at the end of the existing alloced blocks
+    h = (hdr_t *)heap;
+    src_loc_t alloc_loc = {
+        .file = file,
+        .func = func,
+        .lineno = lineno
+    };
+    src_loc_t free_loc = {
+        .file = 0,
+        .func = 0,
+        .lineno = 0
+    };
+    *h = (hdr_t){ 
+        .nbytes_alloc = nbytes, 
+        .nbytes_rem = tot-nbytes,
+        .state = ALLOCED,
+        .cksum = 0,
+        .alloc_loc = alloc_loc,
+        .free_loc = free_loc
+    };
+    h->cksum = hdr_cksum(h);
 
+    // set redzones
+    uint8_t *rz = b_rz1_ptr(h);
+    mark_mem(rz, REDZONE);
+    rz += REDZONE + nbytes;
+    mark_mem(rz, b_rz2_nbytes(h));
 
-    unimplemented();
+    // update end of the heap
+    heap += n;
+    
+    // go from header to payload
+    ptr = b_alloc_ptr(h);
+
     assert(check_hdr(h));
     assert(check_block(h));
 
@@ -138,9 +180,17 @@ int ck_heap_errors(void) {
     unsigned nerrors = 0;
     unsigned nblks = 0;
 
-
-    unimplemented();
-
+    // XXX
+    hdr_t *h = (hdr_t *)heap_start;
+    while ((uintptr_t)h < (uintptr_t)heap) {
+        if (!check_hdr(h))
+            return ++nerrors;            
+        // `check_block` makes a redundant call to `check_hdr`, but that's okay
+        if (!check_block(h))
+            nerrors++;
+        h = (hdr_t *)((char *)b_rz2_ptr(h) + b_rz2_nbytes(h));
+        nblks++;
+    }
 
     if(nerrors)
         trace("checked %d blocks, detected %d errors\n", nblks, nerrors);
