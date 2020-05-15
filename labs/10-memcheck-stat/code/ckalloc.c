@@ -86,8 +86,9 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
 
     // XXX
     h = b_addr_to_hdr(addr);
-    if (!check_block(h))
+    if (!check_block(h)) {
         return;
+    }
     if (h->state == FREED) {
         ck_error(h, "double free of block %p", addr);
         return;
@@ -99,6 +100,9 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
     };
     h->state = FREED;
     h->cksum = hdr_cksum(h);
+
+    // set payload to sentinel
+    mark_mem(addr, h->nbytes_alloc);
 }
 
 // check if nbytes + overhead causes an overflow.
@@ -176,11 +180,21 @@ int ck_heap_errors(void) {
     // XXX
     hdr_t *h = (hdr_t *)heap_start;
     while ((uintptr_t)h < (uintptr_t)heap) {
+        // we're screwed if the header is corrupted
         if (!check_hdr(h))
             return ++nerrors;            
+        // if the block is free but the payload is corrupted, we have an error
+        if (h->state == FREED && !check_mem(h, b_alloc_ptr(h), h->nbytes_alloc)) {
+            trace("\tWrote block after free!\n"); 
+            nerrors++;
+        }
+            
+
         // `check_block` makes a redundant call to `check_hdr`, but that's okay
         if (!check_block(h))
             nerrors++;
+        
+
         h = (hdr_t *)((char *)b_rz2_ptr(h) + b_rz2_nbytes(h));
         nblks++;
     }
