@@ -45,11 +45,12 @@ static int check_hdr(hdr_t *h) {
         (h->state == ALLOCED || h->state == FREED);
 }
 
-static int check_mem(char *p, unsigned nbytes) {
+static int check_mem(hdr_t *h, char *p, unsigned nbytes) {
     int i;
     for(i = 0; i < nbytes; i++) {
         if(p[i] != SENTINAL) {
-            trace("block 0x%p corrupted at offset %d\n", p, nbytes);
+            int offset = (p + i) - (char *)b_alloc_ptr(h);
+            ck_error(h, "block %p corrupted at offset %d\n", p, offset);
             return 0;
         }
     }
@@ -68,8 +69,8 @@ static void mark_mem(void *p, unsigned nbytes) {
 static int check_block(hdr_t *h) {
     // short circuit the checks.
     return check_hdr(h)
-        && check_mem(b_rz1_ptr(h), REDZONE)
-        && check_mem(b_rz2_ptr(h), b_rz2_nbytes(h));
+        && check_mem(h, b_rz1_ptr(h), REDZONE)
+        && check_mem(h, b_rz2_ptr(h), b_rz2_nbytes(h));
 }
 
 /*
@@ -85,12 +86,19 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
 
     // XXX
     h = b_addr_to_hdr(addr);
-    if (h->state == FREED)
-        trace_panic("header at %p is already free\n", h);
+    if (!check_block(h))
+        return;
+    if (h->state == FREED) {
+        ck_error(h, "double free of block %p", addr);
+        return;
+    }
+    h->free_loc = (src_loc_t){
+        .file = file,
+        .func = func,
+        .lineno = lineno
+    };
     h->state = FREED;
     h->cksum = hdr_cksum(h);
-
-    assert(check_block(h));
 }
 
 // check if nbytes + overhead causes an overflow.
