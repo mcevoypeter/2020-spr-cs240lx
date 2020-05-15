@@ -150,10 +150,8 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     h->cksum = hdr_cksum(h);
 
     // set redzones
-    uint8_t *rz = b_rz1_ptr(h);
-    mark_mem(rz, REDZONE);
-    rz += REDZONE + nbytes;
-    mark_mem(rz, b_rz2_nbytes(h));
+    mark_mem(b_rz1_ptr(h), REDZONE);
+    mark_mem(b_rz2_ptr(h), b_rz2_nbytes(h));
 
     // update end of the heap
     heap += n;
