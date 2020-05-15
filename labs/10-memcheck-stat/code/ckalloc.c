@@ -72,19 +72,6 @@ static int check_block(hdr_t *h) {
         && check_mem(b_rz2_ptr(h), b_rz2_nbytes(h));
 }
 
-static void hdr_print(hdr_t *h) {
-    src_loc_t *l = &h->alloc_loc;
-    if(l->file)
-        printk("[allocated @ %s:%s:%d]", l->file, l->func, l->lineno);
-
-    l = &h->free_loc;
-    if(h->state == FREED && l->file)
-        printk("[freed @ %s:%s:%d]", l->file, l->func, l->lineno);
-}
-
-#define ck_error(_h, args...) do { \
-    printk("TRACE:"); hdr_print(_h); printk(args); panic(args); } while(0)
-
 /*
  *  give an error if so.
  *  1. header is in allocated state.
@@ -112,7 +99,7 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     void *ptr = 0;
 
     demand(heap, "not initialized?");
-    trace("allocating %d bytes\n");
+    trace("allocating %d bytes\n", nbytes);
 
     unsigned tot = pi_roundup(nbytes, 8);
     unsigned n = tot + OVERHEAD_NBYTES;
@@ -162,7 +149,7 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     assert(check_hdr(h));
     assert(check_block(h));
 
-    trace("ckalloc:allocated %d bytes, (tot=%d), ptr=%p\n", nbytes, n, ptr);
+    trace("ckalloc:allocated %d bytes, (total=%d), ptr=%p\n", nbytes, n, ptr);
     return ptr;
 }
 
