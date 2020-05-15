@@ -50,7 +50,7 @@ static int check_mem(hdr_t *h, char *p, unsigned nbytes) {
     for(i = 0; i < nbytes; i++) {
         if(p[i] != SENTINAL) {
             int offset = (p + i) - (char *)b_alloc_ptr(h);
-            ck_error(h, "block %p corrupted at offset %d\n", p, offset);
+            ck_error(h, "block %p corrupted at offset %d\n", b_alloc_ptr(h), offset);
             return 0;
         }
     }
@@ -183,12 +183,12 @@ int ck_heap_errors(void) {
         // we're screwed if the header is corrupted
         if (!check_hdr(h))
             return ++nerrors;            
+
         // if the block is free but the payload is corrupted, we have an error
         if (h->state == FREED && !check_mem(h, b_alloc_ptr(h), h->nbytes_alloc)) {
             trace("\tWrote block after free!\n"); 
             nerrors++;
         }
-            
 
         // `check_block` makes a redundant call to `check_hdr`, but that's okay
         if (!check_block(h))
