@@ -1,13 +1,14 @@
 # if you do "make checkall" it will check all of these.
- TESTS = part1-test1 \
-		 part1-test2 \
-		 part1-test3 \
-		 part1-test4 \
-		 part1-test5 \
-		 part1-test6 
+# TESTS = part1-test1 \
+		 #part1-test2 \
+		 #part1-test3 \
+		 #part1-test4 \
+		 #part1-test5 \
+		 #part1-test6 \
+		 #part1-peter-test
 
 # easy way to test everything when you are done.
-# TESTS := $(wildcard ./part*-test*.c)
+TESTS := $(wildcard tests/part*-test*.c)
 
 TESTS := $(patsubst %.c, %, $(TESTS))  
 
