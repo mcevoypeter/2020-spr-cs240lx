@@ -8,7 +8,7 @@
 		 #part1-peter-test
 
 # easy way to test everything when you are done.
-TESTS := $(wildcard tests/part*-test*.c)
+TESTS := $(wildcard tests/ckalloc-test*.c)
 
 TESTS := $(patsubst %.c, %, $(TESTS))  
 
@@ -62,13 +62,13 @@ $(OBJS): $(DEPS)
 	my-install ./$*.bin
 
 # note: this will fail if output does not contain a trace.
-%.emit: %.bin
-	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.out
+tests/%.emit: tests/%.bin
+	my-install tests/$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > tests/$*.out
 
-%.check: %.bin
-	my-install ./$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > ./$*.test
-	diff ./$*.test ./$*.out
-	rm ./$*.test
+tests/%.check: tests/%.bin
+	my-install tests/$*.bin 2>&1 > /dev/null | grep 'TRACE:\|ERROR:\|PANIC:' > tests/$*.test
+	diff tests/$*.test tests/$*.out
+	rm tests/$*.test
 
 # not sure if there is a better way: use these fake target to run our
 # checks for everything.
@@ -80,7 +80,7 @@ tags:
 	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs] 
 
 clean:
-	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin tests/*.bin *.elf tests/*.elf *.list tests/*.list *.img Makefile.bak  *.d *.test
+	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin tests/*.bin *.elf tests/*.elf *.list tests/*.list *.img Makefile.bak  *.d tests/*.test
 
 cleanall:
 	make -C ./ clean
