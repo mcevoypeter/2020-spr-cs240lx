@@ -80,7 +80,7 @@ tags:
 	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs] 
 
 clean:
-	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin *.elf *.list *.img Makefile.bak  *.d *.test
+	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin tests/*.bin *.elf tests/*.elf *.list tests/*.list *.img Makefile.bak  *.d *.test
 
 cleanall:
 	make -C ./ clean
