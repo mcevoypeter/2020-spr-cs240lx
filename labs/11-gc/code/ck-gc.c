@@ -110,7 +110,14 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 	output("---------------------------------------------------------\n");
 	output("checking for leaks:\n");
 
-    unimplemented();
+    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h), nblocks++) {
+        // this block wasn't leaked/can't be collected
+        if (h->mark) {
+            h->mark = 0;
+        } else if (h->state == ALLOCED) {
+            ckfree(b_alloc_ptr(h));  
+        }
+    }
 
 	trace("\tGC:Checked %d blocks.\n", nblocks);
 	if(!errors && !maybe_errors)
