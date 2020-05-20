@@ -23,7 +23,7 @@ struct heap_info heap_info(void) {
 }
 
 // compute checksum on header.  need to do w/ cksum set to known value!
-static uint32_t hdr_cksum(hdr_t *h) {
+uint32_t hdr_cksum(hdr_t *h) {
     unsigned old = h->cksum;
     h->cksum = 0;
     uint32_t cksum = fast_hash(h,sizeof *h);
@@ -34,6 +34,7 @@ static uint32_t hdr_cksum(hdr_t *h) {
 // check the header checksum and that its state == ALLOCED or FREED
 int check_hdr(hdr_t *h) {
     // XXX
+    /*printk("check_hdr: h = %p, h->cksum = %u, hdr_cksum(h) = %u\n", h, h->cksum, hdr_cksum(h));*/
     return h->cksum == hdr_cksum(h) && 
         (h->state == ALLOCED || h->state == FREED);
 }

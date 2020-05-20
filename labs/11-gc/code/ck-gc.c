@@ -93,6 +93,12 @@ static void mark(uint32_t *p, uint32_t *e) {
         // first time marking this block
         if ((h = is_ptr(*w)) && h->mark == 0) {
             h->mark = 1;
+            // mark where the pointer points to in the block
+            if ((void *)*w == b_alloc_ptr(h))
+                h->refs_start++;
+            else
+                h->refs_middle++;
+            h->cksum = hdr_cksum(h);
             // recursively mark all pointers in this block
             // we'll be conservative and include the first word of the redzone
             // just to be safe
@@ -113,8 +119,12 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
     for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h), nblocks++) {
         // this block wasn't leaked/can't be collected
         if (h->mark) {
+            // no pointers to the start, which means this block might have leaked
+            if (h->refs_start == 0) 
+                maybe_errors++;
             h->mark = 0;
         } else if (h->state == ALLOCED) {
+            errors++;
             ckfree(b_alloc_ptr(h));  
         }
     }
