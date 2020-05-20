@@ -117,19 +117,19 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 	output("checking for leaks:\n");
 
     for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h), nblocks++) {
+        void *p = b_alloc_ptr(h);
         // this block *probably* wasn't leaked
         if (h->mark) {
             // no pointers to the start, which means this block might have leaked
-            if (h->refs_start == 0) 
+            if (h->refs_start == 0 && warn_no_start_ref_p) {
+                trace("ERROR:GC:MAYBE LEAK of %p (no pointer to the start)\n", p);
                 maybe_errors++;
+            }
             h->mark = 0;
             h->cksum = hdr_cksum(h);
         } else if (h->state == ALLOCED) {
-            void *p = b_alloc_ptr(h);
             trace("ERROR:GC:DEFINITE LEAK of %p\n", p);
             errors++;
-            trace("GC:FREEing ptr=%x\n", p);
-            ckfree(p);  
         }
     }
 
@@ -140,7 +140,7 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 		trace("\t\tGC:ERRORS: %d errors, %d maybe_errors\n", 
 						errors, maybe_errors);
 	output("----------------------------------------------------------\n");
-	return errors + maybe_errors;
+    return errors + maybe_errors;
 }
 
 // write the assembly to dump all registers.
@@ -247,7 +247,7 @@ static unsigned sweep_free(void) {
             nbytes_freed += h->nbytes_alloc;
             nfreed++;
             void *p = b_alloc_ptr(h);
-            trace("GC:FREEing ptr=%p\n", p);
+            trace("GC:FREEing ptr=%x\n", p);
             ckfree(p);
         }
     }
