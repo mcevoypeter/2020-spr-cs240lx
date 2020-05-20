@@ -125,8 +125,11 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
             h->mark = 0;
             h->cksum = hdr_cksum(h);
         } else if (h->state == ALLOCED) {
+            void *p = b_alloc_ptr(h);
+            trace("ERROR:GC:DEFINITE LEAK of %p\n", p);
             errors++;
-            ckfree(b_alloc_ptr(h));  
+            trace("GC:FREEing ptr=%x\n", p);
+            ckfree(p);  
         }
     }
 
@@ -149,12 +152,6 @@ void dump_regs(uint32_t *v, ...);
 static void mark_all(void) {
     // get start and end of heap so we can do quick checks
     info = heap_info();
-
-    // slow: should not need this: remove after your code
-    // works.
-    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
-        h->mark = h->refs_start = h->refs_middle = 0;
-    }
 
 	// pointers can be on the stack, in registers, or in the heap itself.
 
@@ -248,6 +245,7 @@ static unsigned sweep_free(void) {
             h->cksum = hdr_cksum(h);
         } else if (h->state == ALLOCED) {
             nbytes_freed += h->nbytes_alloc;
+            nfreed++;
             void *p = b_alloc_ptr(h);
             trace("GC:FREEing ptr=%p\n", p);
             ckfree(p);
