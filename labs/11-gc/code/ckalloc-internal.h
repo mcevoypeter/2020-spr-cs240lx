@@ -139,6 +139,8 @@ static void inline hdr_print(hdr_t *h) {
         trace("\tBlock freed at: %s:%s:%d\n", l->file, l->func, l->lineno);
 }
 
+int check_hdr(hdr_t *h);
+
 
 /*************************************************************
  * implement these for lab 11.

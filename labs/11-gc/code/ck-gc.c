@@ -18,6 +18,23 @@
 
 static struct heap_info info;
 
+// returns pointer to the first header block.
+hdr_t *ck_first_hdr(void) {
+    hdr_t *h = info.heap_start;
+    assert(h);
+    assert(check_hdr(h));
+    return h;
+}
+
+// returns pointer to next hdr or 0 if none.
+hdr_t *ck_next_hdr(hdr_t *p) {
+    hdr_t *next = (hdr_t *)((char *)b_rz2_ptr(p) + b_rz2_nbytes(p));
+    if ((void *)next >= info.heap_end)
+        return 0;
+    assert(check_hdr(next));
+    return next;
+}
+
 // quick check that the pointer is between the start of
 // the heap and the last allocated heap pointer.  saves us 
 // walk through all heap blocks.
@@ -25,7 +42,7 @@ static struct heap_info info;
 // we could warn if the pointer is within some amount of slop
 // so that you can detect some simple overruns?
 static int in_heap(void *p) {
-    unimplemented();
+    return info.heap_start <= p && p <= info.heap_end;
 }
 
 // given potential address <addr>, returns:
@@ -42,8 +59,14 @@ static hdr_t *is_ptr(uint32_t addr) {
     if(!in_heap(p))
         return 0;
 
-    unimplemented();
-
+    hdr_t *h = ck_first_hdr();
+    while ((void *)h < p) {
+        void *payload_start = b_alloc_ptr(h);
+        void *payload_end = b_rz2_ptr(h);
+        if (payload_start <= p && p < payload_end)
+            return h;
+        h = ck_next_hdr(h);
+    }
     // output("could not find pointer %p\n", addr);
     return 0;
 }
@@ -65,7 +88,17 @@ static void mark(uint32_t *p, uint32_t *e) {
     assert(aligned(p,4));
     assert(aligned(e,4));
 
-    unimplemented();
+    hdr_t *h;
+    for (uint32_t *w = p; w <= e; w++) {
+        // first time marking this block
+        if ((h = is_ptr(*w)) && h->mark == 0) {
+            h->mark = 1;
+            // recursively mark all pointers in this block
+            // we'll be conservative and include the first word of the redzone
+            // just to be safe
+            mark(b_alloc_ptr(h), (uint32_t *)b_rz2_ptr(h));
+        }
+    }
 }
 
 
@@ -78,8 +111,6 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 	output("checking for leaks:\n");
 
     unimplemented();
-
-
 
 	trace("\tGC:Checked %d blocks.\n", nblocks);
 	if(!errors && !maybe_errors)
@@ -98,15 +129,14 @@ void dump_regs(uint32_t *v, ...);
 
 // a very slow leak checker.
 static void mark_all(void) {
+    // get start and end of heap so we can do quick checks
+    info = heap_info();
+
     // slow: should not need this: remove after your code
     // works.
     for(hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
         h->mark = h->refs_start = h->refs_middle = 0;
     }
-
-    // get start and end of heap so we can do quick checks
-    struct heap_info i = heap_info();
-    unimplemented();
 
 	// pointers can be on the stack, in registers, or in the heap itself.
 
@@ -114,15 +144,17 @@ static void mark_all(void) {
     uint32_t regs[16];
     // should kill caller-saved registers
     dump_regs(regs);
-    assert(regs[0] == (uint32_t)regs[0]);
+    assert(regs[0] == (uint32_t)&regs[0]);
 
-    unimplemented();
     mark(regs, &regs[14]);
 
     // mark the stack: we are assuming only a single
     // stack.  note: stack grows down.
     uint32_t *stack_top = (void*)STACK_ADDR;
-    unimplemented();
+    // conservatively assume that the stack pointer points to the bottom-most
+    // word on the stack rather than one word below the bottom-most word
+    uint32_t *stack_bottom = (uint32_t *)regs[13];
+    mark(stack_bottom, stack_top);
 
     // these symbols are defined in our memmap
 	extern uint32_t __bss_start__, __bss_end__;

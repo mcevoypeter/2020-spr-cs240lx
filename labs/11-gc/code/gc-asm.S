@@ -1,5 +1,7 @@
 #include "rpi-asm.h"
 
 MK_FN(dump_regs)
-    bl implement_this
+    stm r0, {r0-r13}
     bx lr;
+
+
