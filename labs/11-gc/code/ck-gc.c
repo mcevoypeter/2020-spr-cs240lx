@@ -117,12 +117,13 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 	output("checking for leaks:\n");
 
     for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h), nblocks++) {
-        // this block wasn't leaked/can't be collected
+        // this block *probably* wasn't leaked
         if (h->mark) {
             // no pointers to the start, which means this block might have leaked
             if (h->refs_start == 0) 
                 maybe_errors++;
             h->mark = 0;
+            h->cksum = hdr_cksum(h);
         } else if (h->state == ALLOCED) {
             errors++;
             ckfree(b_alloc_ptr(h));  
@@ -151,7 +152,7 @@ static void mark_all(void) {
 
     // slow: should not need this: remove after your code
     // works.
-    for(hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
+    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
         h->mark = h->refs_start = h->refs_middle = 0;
     }
 
@@ -240,7 +241,18 @@ static unsigned sweep_free(void) {
 	output("---------------------------------------------------------\n");
 	output("compacting:\n");
 
-    unimplemented();
+    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h), nblocks++) {
+        if (h->mark) {
+            // no pointers to the start, which means this block might have leaked
+            h->mark = 0;
+            h->cksum = hdr_cksum(h);
+        } else if (h->state == ALLOCED) {
+            nbytes_freed += h->nbytes_alloc;
+            void *p = b_alloc_ptr(h);
+            trace("GC:FREEing ptr=%p\n", p);
+            ckfree(p);
+        }
+    }
 
     // i used this when freeing.
     // trace("GC:FREEing ptr=%x\n", ptr);

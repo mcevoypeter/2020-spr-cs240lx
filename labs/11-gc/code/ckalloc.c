@@ -96,6 +96,8 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
     nbytes_freed += h->nbytes_alloc;
 
     h->state = FREED;
+    h->refs_start = 0;
+    h->refs_middle = 0;
 
     // set payload to sentinel
     mark_mem(addr, h->nbytes_alloc);
