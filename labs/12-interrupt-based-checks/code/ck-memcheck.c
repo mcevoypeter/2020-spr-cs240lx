@@ -157,6 +157,9 @@ void ck_mem_set_range(void *start, void *end) {
     // XXX
     start_check = (uint32_t)start;
     end_check = (uint32_t)end;
+
+    // when we reset the range, all instructions are fair game again
+    memset((void *)rewritten_instructions, need_to_rewrite, instr_count);
 }
 
 // maybe should always do the heap check at the begining
