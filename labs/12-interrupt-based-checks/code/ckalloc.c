@@ -165,7 +165,9 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     assert(check_hdr(h));
     assert(check_block(h));
 
+#if VERBOSE
     trace("ckalloc:allocated %d bytes, (total=%d), ptr=%p\n", nbytes, n, ptr);
+#endif
     return ptr;
 }
 
@@ -176,8 +178,10 @@ int ck_heap_errors(void) {
     unsigned alloced = heap - heap_start;
     unsigned left = heap_end - heap;
 
+#if 0
     trace("going to check heap: %d bytes allocated, %d bytes left\n", 
             alloced, left);
+#endif
     unsigned nerrors = 0;
     unsigned nblks = 0;
 
@@ -197,16 +201,17 @@ int ck_heap_errors(void) {
         // `check_block` makes a redundant call to `check_hdr`, but that's okay
         if (!check_block(h))
             nerrors++;
-        
 
         h = (hdr_t *)((char *)b_rz2_ptr(h) + b_rz2_nbytes(h));
         nblks++;
     }
 
+#if 0
     if(nerrors)
         trace("checked %d blocks, detected %d errors\n", nblks, nerrors);
     else
         trace("SUCCESS: checked %d blocks, detected no errors\n", nblks);
+#endif
     return nerrors;
 }
 
