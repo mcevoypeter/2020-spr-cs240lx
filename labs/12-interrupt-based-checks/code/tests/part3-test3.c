@@ -5,12 +5,22 @@
 // one / easy to change exactly what is occuring.
 #include "rpi.h"
 #include "ckalloc.h"
+#include "armv6-insts.h"
 
 #define N 80
 
+void bar(void);
+void foo(void) {
+    bar();
+}
+
+void bar(void) {
+    printk("bar\n");
+}
+
 void test_check(void) { 
     volatile char *p = ckalloc(N);
-    ckfree((void*)p);
+    /*ckfree((void*)p);*/
     ck_mem_on();
     for(int j = 0; j < 1000; j++) {
         *p = 1;
@@ -66,6 +76,12 @@ void test_check_end() { }
 
 void notmain(void) {
     printk("test1\n");
+
+    printk("checking encoding of bl\n");
+    uint32_t *code = (uint32_t *)0x8010;
+    printk("compiled encoding: \t%x\n", code[1]);
+    printk("runtime-generated encoding: \t%x\n", arm_bl((uint32_t)(code+1), (uint32_t)bar));
+    printk("done\n");
 
     // start heap allocating after the first mb.   give it 1mb to use.
     kmalloc_init_set_start(0x100000);

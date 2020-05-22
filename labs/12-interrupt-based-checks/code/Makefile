@@ -3,7 +3,7 @@
 #   - "make emitall" it emit .outs for all programs in TESTS
 #   - "make runall" it will run all programs in TESTS
 # if you want to just grab all tests do:
-TESTS = ./tests/part3-test1
+TESTS = ./tests/part3-test3
 # TESTS := $(wildcard ./tests/part2*-test*.c)
 
 # part1-test2 part1-test3 part1-test4
@@ -43,7 +43,7 @@ endif
 
 include $(CS240LX_2021_PATH)/libpi/includes.mk
 
-CFLAGS += -Wno-unused-function -Wno-unused-variable -fno-toplevel-reorder -Werror
+CFLAGS += -I../../../labs/2-dynamic-code-gen/code/unix-side -Wno-unused-function -Wno-unused-variable -fno-toplevel-reorder -Werror
 # -fno-reorder-functions
 
 # add all the .h's as dependencies, libpi and the makefile.
