@@ -4,6 +4,8 @@
 #include "ckalloc-internal.h"
 #include "timer-interrupt.h"
 
+#define VERBOSE 1
+#define NCYCLES 0x100
 
 // you'll need to pull your code from lab 2 here so you
 // can fabricate jumps
@@ -25,11 +27,6 @@ static uint32_t
 static int in_range(uint32_t addr, uint32_t b, uint32_t e) {
     assert(b<e);
     return addr >= b && addr < e;
-}
-
-// XXX
-void interrupt_vector(unsigned pc) {
-
 }
 
 // if <pc> is in the range we want to check and not in the 
@@ -60,7 +57,11 @@ void ck_mem_interrupt(uint32_t pc) {
     // we don't know what the user was doing.
     dev_barrier();
 
-    unimplemented();
+    // XXX
+#if VERBOSE
+    printk("interrupt triggered: pc=%x, ckalloc_start=%x, ckalloc_end=%x\n", pc);
+#endif
+
 
 
     // we don't know what the user was doing.
@@ -77,7 +78,22 @@ void ck_mem_init(void) {
     assert(in_range((uint32_t)ckfree, start_nocheck, end_nocheck));
     assert(!in_range((uint32_t)printk, start_nocheck, end_nocheck));
 
-    unimplemented();
+    // XXX
+#if VERBOSE
+    printk("about to install handlers\n");
+    int_init();
+
+    printk("setting up timer interrupts\n");
+    timer_interrupt_init(NCYCLES);
+
+    printk("gonna enable ints globally!\n");
+    system_enable_interrupts();
+    printk("enabled!\n");
+#else
+    int_init();
+    timer_interrupt_init(NCYCLES);
+    system_enable_interrupts();
+#endif
 }
 
 // only check pc addresses [start,end)

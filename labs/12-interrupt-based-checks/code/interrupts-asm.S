@@ -38,7 +38,7 @@ interrupt_asm:
   @ vpush {s0-s15}	        @ uncomment if want to save caller-saved fp regs
 
   mov   r0, lr              @ Pass old pc
-  bl    interrupt_vector    @ C function
+  bl    ck_mem_interrupt    @ C function
 
   @ vpop {s0-s15}           @ pop caller saved fp regs
   pop   {r0-r12,lr} 	    @ pop integer registers
