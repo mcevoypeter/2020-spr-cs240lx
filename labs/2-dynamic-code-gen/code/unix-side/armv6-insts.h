@@ -280,6 +280,11 @@ static inline uint32_t arm_ldm(uint8_t addr_mode, uint8_t incr_base, uint8_t rn,
 
 }
 
+// pop
+static inline uint32_t arm_pop(uint8_t rn, uint16_t reglist) {
+    return arm_ldm(arm_IA, arm_incr_base, rn, reglist);
+}
+
 // store multiple - A5-42
 static inline uint32_t arm_stm(uint8_t addr_mode, uint8_t incr_base, uint8_t rn, uint16_t reg_list) {
     ldm_stm_instr_t instr = {
@@ -296,6 +301,11 @@ static inline uint32_t arm_stm(uint8_t addr_mode, uint8_t incr_base, uint8_t rn,
     uint32_t encoded_instr;
     memcpy(&encoded_instr, &instr, sizeof(unsigned));
     return encoded_instr;
+}
+
+// push
+static inline uint32_t arm_push(uint8_t rn, uint16_t reglist) {
+    return arm_stm(arm_DB, arm_incr_base, rn, reglist);
 }
 
 // A4-10

@@ -9,7 +9,20 @@
 
 // you'll need to pull your code from lab 2 here so you
 // can fabricate jumps
-// #include "armv6-insts.h"
+ #include "armv6-insts.h"
+
+typedef uint32_t instr_t;
+typedef struct {
+    instr_t instr0;
+    instr_t instr1;
+    instr_t instr2;
+    instr_t instr3;
+    instr_t instr4;
+    instr_t instr5;
+} trampoline_t;
+static volatile trampoline_t *trampolines;
+static volatile unsigned char *rewritten_instructions;
+static volatile instr_t *instructions = (void *)&__code_start__;
 
 // used to check initialization.
 static volatile int init_p, check_on;
@@ -23,6 +36,7 @@ static uint32_t
     // you will have to define these functions.
     start_nocheck = (uint32_t)ckalloc_start,
     end_nocheck = (uint32_t)ckalloc_end;
+
 
 static int in_range(uint32_t addr, uint32_t b, uint32_t e) {
     assert(b<e);
@@ -53,9 +67,14 @@ unsigned ck_mem_stats(int clear_stats_p) {
     return c;
 }
 
+void trampoline(uint32_t pc) {
+    printk("pc=%x: we did it!\n", pc);
+}
+
 // note: lr = the pc that we were interrupted at.
 // longer term: pass in the entire register bank so we can figure
 // out more general questions.
+enum { need_to_rewrite = 0, rewritten };
 void ck_mem_interrupt(uint32_t pc) {
 
     // we don't know what the user was doing.
@@ -63,7 +82,7 @@ void ck_mem_interrupt(uint32_t pc) {
 
     // XXX
 #if VERBOSE
-    trace("interrupt triggered: pc=%x, ckalloc_start=%x, ckalloc_end=%x\n", pc);
+    trace("interrupt triggered: pc=%x\n", pc);
 #endif
     unsigned pending = GET32(IRQ_basic_pending);
 
@@ -78,10 +97,30 @@ void ck_mem_interrupt(uint32_t pc) {
     dev_barrier();
 
     // we interrupted checkable code
-    if (ck_mem_checked_pc(pc)) {
-        /*ck_heap_errors();*/
+    int should_rewrite = ck_mem_checked_pc(pc);
+    unsigned offset = (pc - (uint32_t)&__code_start__) / sizeof(instr_t);
+    int already_rewritten = rewritten_instructions[offset];
+    if (should_rewrite && !already_rewritten) {
+        printk("rewriting\n");
+        instr_t original_instr = instructions[offset];
+        // push r0-r12, r14 onto stack
+        uint16_t reglist = (uint16_t)~(1 << arm_pc | 1 << arm_sp);
+        uint32_t bl_src = (uint32_t)((instr_t *)(trampolines+offset) + 2);
+        uint32_t b_src = (uint32_t)((instr_t *)(trampolines+offset) + 5);
+        trampolines[offset] = (trampoline_t) {
+            .instr0 = arm_push(arm_sp, reglist),
+            .instr1 = arm_mov_reg(arm_r0, pc),
+            .instr2 = arm_bl(bl_src, (uint32_t)trampoline),
+            .instr3 = arm_pop(arm_sp, reglist),
+            .instr4 = original_instr,
+            .instr5 = arm_b(b_src, pc+4)
+        };
+
+        instructions[offset] = arm_b((uint32_t)(instructions+offset), (uint32_t)trampolines+offset);
+        
+        rewritten_instructions[offset] = rewritten;     
         checked++;
-    } else 
+    } else if (!should_rewrite)
         skipped++;
 }
 
@@ -114,6 +153,12 @@ void ck_mem_set_range(void *start, void *end) {
 void ck_mem_on(void) {
     assert(init_p && !check_on);
     check_on = 1;
+
+    // set up memory for trampolines
+    unsigned instr_count = __code_end__ - __code_start__;
+    trampolines = kmalloc(instr_count*sizeof(trampoline_t));
+    rewritten_instructions = kmalloc(instr_count);
+    memset((void *)rewritten_instructions, need_to_rewrite, instr_count);
 
     // XXX
 #if VERBOSE
