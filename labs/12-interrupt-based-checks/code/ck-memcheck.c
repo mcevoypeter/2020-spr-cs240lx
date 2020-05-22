@@ -27,6 +27,11 @@ static int in_range(uint32_t addr, uint32_t b, uint32_t e) {
     return addr >= b && addr < e;
 }
 
+// XXX
+void interrupt_vector(unsigned pc) {
+
+}
+
 // if <pc> is in the range we want to check and not in the 
 // range we cannot check, return 1.
 int (ck_mem_checked_pc)(uint32_t pc) {
