@@ -2,6 +2,8 @@
 #include "libc/helper-macros.h"
 #include "ckalloc-internal.h"
 
+#define VERBOSE 0
+
 void ckalloc_start() {}
 
 // simplistic heap management: a single, contiguous heap given to us by calling
@@ -78,7 +80,9 @@ void (ckfree)(void *addr, const char *file, const char *func, unsigned lineno) {
     hdr_t *h = 0;
 
     demand(heap, "not initialized?");
+#if VERBOSE
     trace("freeing %p\n", addr);
+#endif
 
     // XXX
     h = b_addr_to_hdr(addr);
@@ -112,7 +116,9 @@ void *(ckalloc)(uint32_t nbytes, const char *file, const char *func, unsigned li
     void *ptr = 0;
 
     demand(heap, "not initialized?");
+#if VERBOSE
     trace("allocating %d bytes\n", nbytes);
+#endif
 
     unsigned tot = pi_roundup(nbytes, 8);
     unsigned n = tot + OVERHEAD_NBYTES;
@@ -178,7 +184,7 @@ int ck_heap_errors(void) {
     unsigned alloced = heap - heap_start;
     unsigned left = heap_end - heap;
 
-#if 0
+#if VERBOSE
     trace("going to check heap: %d bytes allocated, %d bytes left\n", 
             alloced, left);
 #endif
@@ -206,9 +212,9 @@ int ck_heap_errors(void) {
         nblks++;
     }
 
-#if 0
     if(nerrors)
         trace("checked %d blocks, detected %d errors\n", nblks, nerrors);
+#if VERBOSE
     else
         trace("SUCCESS: checked %d blocks, detected no errors\n", nblks);
 #endif

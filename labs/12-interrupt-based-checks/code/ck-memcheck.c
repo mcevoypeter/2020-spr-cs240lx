@@ -54,21 +54,21 @@ int (ck_mem_checked_pc)(uint32_t pc) {
 // useful variables to track: how many times we did 
 // checks, how many times we skipped them b/c <ck_mem_checked_pc>
 // returned 0 (skipped)
-static volatile unsigned checked = 0, skipped = 0;
+static volatile unsigned checked = 0, skipped = 0, rewritten_cnt = 0;
 
 unsigned ck_mem_stats(int clear_stats_p) { 
-    unsigned s = skipped, c = checked, n = s+c;
-#if VERBOSE
-    printk("total interrupts = %d, checked instructions = %d, skipped = %d\n",
-        n,c,s);
-#endif
+    unsigned r = rewritten_cnt, s = skipped, c = checked, n = s+c;
+    printk("total interrupts = %d, rewritten instructions = %d, checked instructions = %d, skipped = %d\n",
+        n,r,c,s);
     if(clear_stats_p)
         skipped = checked = 0;
     return c;
 }
 
-void trampoline(uint32_t pc) {
-    printk("pc=%x: we did it!\n", pc);
+void check_heap(uint32_t pc) {
+    checked++;
+    if (ck_heap_errors())
+        panic("Heap corrupted at pc=%x\n", pc);
 }
 
 // note: lr = the pc that we were interrupted at.
@@ -101,24 +101,34 @@ void ck_mem_interrupt(uint32_t pc) {
     unsigned offset = (pc - (uint32_t)&__code_start__) / sizeof(instr_t);
     int already_rewritten = rewritten_instructions[offset];
     if (should_rewrite && !already_rewritten) {
-        printk("rewriting\n");
         instr_t original_instr = instructions[offset];
+        assert(*(uint32_t *)pc == original_instr);
+        if (original_instr != 0xe5c43000)
+            return;
         // push r0-r12, r14 onto stack
         uint16_t reglist = (uint16_t)~(1 << arm_pc | 1 << arm_sp);
         uint32_t bl_src = (uint32_t)((instr_t *)(trampolines+offset) + 2);
         uint32_t b_src = (uint32_t)((instr_t *)(trampolines+offset) + 5);
         trampolines[offset] = (trampoline_t) {
             .instr0 = arm_push(arm_sp, reglist),
-            .instr1 = arm_mov_reg(arm_r0, pc),
-            .instr2 = arm_bl(bl_src, (uint32_t)trampoline),
+            .instr1 = arm_mov_reg(arm_r0, arm_pc),
+            .instr2 = arm_bl(bl_src, (uint32_t)check_heap),
             .instr3 = arm_pop(arm_sp, reglist),
             .instr4 = original_instr,
             .instr5 = arm_b(b_src, pc+4)
         };
-
-        instructions[offset] = arm_b((uint32_t)(instructions+offset), (uint32_t)trampolines+offset);
-        
+        instructions[offset] = arm_b((uint32_t)(instructions+offset), (uint32_t)(trampolines+offset));
+#if VERBOSE
+        printk("rewriting\n");
+        printk("instr0 = %x\n", trampolines[offset].instr0);
+        printk("instr1 = %x\n", trampolines[offset].instr1);
+        printk("instr2 = %x\n", trampolines[offset].instr2);
+        printk("instr3 = %x\n", trampolines[offset].instr3);
+        printk("instr4 = %x\n", trampolines[offset].instr4);
+        printk("instr5 = %x\n", trampolines[offset].instr5);
+#endif
         rewritten_instructions[offset] = rewritten;     
+        rewritten_cnt++;
         checked++;
     } else if (!should_rewrite)
         skipped++;
