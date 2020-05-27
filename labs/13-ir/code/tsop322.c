@@ -93,6 +93,7 @@ void tsop322_poll(void) {
 enum {
     eps = 200,
     start = 4500,
+    stop = 96000,
     zero = 500,
     one = 1600
 };
@@ -112,26 +113,37 @@ static int pick(unsigned duration) {
     panic("Invalid time: <%d> expected %d or %d\n", duration, zero, one);
 }
 
-unsigned tsop322_reverse_engineer(verbosity_t verbose, button_t *button) {
+unsigned tsop322_reverse_engineer(verbosity_t verbose) {
     if (verbose)
         printk("Reverse engineering a button press\n");
     unsigned v = 0; 
     
+    // Start bit.
     unsigned duration;
     do {
         duration = consume_bit();
     } while (duration < start-eps || start+eps < duration);
 
+    // Data bits.
     for (unsigned i = 0; i < 32; i++)
         v |= (pick(consume_bit()) << i);
+
+    // Stop bit.
+    do {
+        duration = consume_bit();
+    } while (duration < stop-eps || stop+eps < duration);
     
     if (verbose) 
         printk("Finished reverse engineering: v=%x\n", v);
+    return v;
+}
 
+void tsop322_get_button_press(button_t *button) {
+    unsigned v = tsop322_reverse_engineer(quiet);
     for (unsigned i = 0; i < sizeof(buttons)/sizeof(*buttons); i++) {
         if (buttons[i].hex_encoding == v) {
             memcpy(button, &buttons[i], sizeof(button_t));
-            return v;
+            return;
         }
     }
     panic("Hex encoding %x did not match any known buttons\n");

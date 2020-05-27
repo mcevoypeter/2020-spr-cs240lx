@@ -15,7 +15,9 @@ void tsop322_init(unsigned data_pin);
 
 void tsop322_poll(void);
 
-unsigned tsop322_reverse_engineer(verbosity_t verbose, button_t *button);
+unsigned tsop322_reverse_engineer(verbosity_t verbose);
+
+void tsop322_get_button_press(button_t *button);
 
 
 #endif
