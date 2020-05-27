@@ -159,6 +159,8 @@ void ck_mem_set_range(void *start, void *end) {
     end_check = (uint32_t)end;
 
     // when we reset the range, all instructions are fair game again
+    // TODO: is this the right way to compute the number of instructions?
+    unsigned instr_count = __code_end__ - __code_start__;
     memset((void *)rewritten_instructions, need_to_rewrite, instr_count);
 }
 
@@ -168,6 +170,8 @@ void ck_mem_on(void) {
     check_on = 1;
 
     // set up memory for trampolines
+    // TODO: I'm pretty sure this is 4x too large, but I don't want to change it
+    // right now while in the truck
     unsigned instr_count = __code_end__ - __code_start__;
     trampolines = kmalloc(instr_count*sizeof(trampoline_t));
     rewritten_instructions = kmalloc(instr_count);
