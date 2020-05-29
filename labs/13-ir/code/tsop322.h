@@ -13,6 +13,10 @@ typedef struct {
 
 void tsop322_init(unsigned data_pin);
 
+void tsop322_enable_interrupts(void);
+
+void tsop322_disable_interrupts(void);
+
 void tsop322_poll(void);
 
 unsigned tsop322_reverse_engineer(verbosity_t verbose);

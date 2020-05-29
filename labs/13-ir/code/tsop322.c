@@ -40,6 +40,14 @@ void tsop322_init(unsigned data) {
     cycle_cnt_init();
 }
 
+void tsop322_enable_interrupts(void) {
+    // TODO
+}
+
+void tsop322_disable_interrupts(void) {
+    // TODO
+}
+
 #define wait_for_falling_edge() (wait_for_transition(1))
 #define wait_for_rising_edge() (wait_for_transition(0))
 static inline unsigned wait_for_transition(unsigned init_val) {
