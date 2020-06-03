@@ -34,6 +34,10 @@ static inline uint32_t cp14_dscr_get(void) {
     asm volatile("mrc p14, 0, %[result], c0, c1, 0" : [result] "=r" (dscr) ::);
     return dscr;
 }
+static inline void cp14_dscr_set(uint32_t r) {
+    asm volatile("mcr p14, 0, %[val], c0, c1, 0" :: [val] "r" (r));
+    prefetch_flush();
+}
 
 // WFAR: 13-12, 13-26
 static inline uint32_t cp14_wfar_get(void) {
@@ -49,7 +53,7 @@ static inline uint32_t cp14_wvr0_get(void) {
     return wvr0;
 }
 static inline void cp14_wvr0_set(uint32_t r) { 
-    asm volatile("mcr p14, 0, %[result], c0, c0, 6" :: [result] "r" (r));
+    asm volatile("mcr p14, 0, %[val], c0, c0, 6" :: [val] "r" (r));
     prefetch_flush();
 }
 
@@ -100,7 +104,7 @@ static inline unsigned was_debug_datafault(void) {
 }
 
 // 3-68: fault address register: hold the MVA that the fault occured at.
-static inline uint32_t far_get(void) {
+static inline uint32_t cp15_far_get(void) {
     uint32_t far;
     asm volatile("mrc p15, 0, %[result], c6, c0, 0" : [result] "=r" (far) ::); 
     return far;

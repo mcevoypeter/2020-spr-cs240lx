@@ -38,7 +38,7 @@ interrupt_asm:
   @ vpush {s0-s15}	        @ uncomment if want to save caller-saved fp regs
 
   mov   r0, lr              @ Pass old pc
-  bl    data_abort_vector    @ C function
+  bl    dummy_interrupt_vector    @ C function
 
   @ vpop {s0-s15}           @ pop caller saved fp regs
   pop   {r0-r12,lr} 	    @ pop integer registers
@@ -62,7 +62,6 @@ reset_asm:
   mov sp, #INT_STACK_ADDR   
   sub   lr, lr, #4
   bl    reset_vector
-
 undefined_instruction_asm:
   mov sp, #INT_STACK_ADDR   
   sub   lr, lr, #4
@@ -77,5 +76,9 @@ prefetch_abort_asm:
   bl    prefetch_abort_vector
 data_abort_asm:
   mov sp, #INT_STACK_ADDR   
-  sub   lr, lr, #4
+  sub   lr, lr, #8
+  push {r0-r12, lr}
+  mov r0, lr
   bl    data_abort_vector
+  pop {r0-r12, lr}
+  movs pc, lr

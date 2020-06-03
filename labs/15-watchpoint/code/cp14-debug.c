@@ -23,20 +23,21 @@ void watchpt_set0(void *_addr, handler_t handler) {
     
     // enable the watchpoint
     wcr = bit_clr(wcr, 20);         // set bit 20 of WCR to disable linking
-    wcr = bits_set(wcr, 5, 8, 0xf); // set bits 5-8 of WCR to select addresses
-    wcr = bits_set(wcr, 3, 4, 0x3); // set bits 3-4 of WCR to allow loads and stores
-    wcr = bits_set(wcr, 1, 2, 0x3); // set bits 1-2 of WCR to allow user and privileged access
-    wcr = bit_set(wcr, 0);          // set bit 0 of WCR to enable the watchpoint
+    wcr = bits_set(wcr, 5, 8, 0b111); // set bits 5-8 of WCR to select addresses
+    wcr = bits_set(wcr, 3, 4, 0b11); // set bits 3-4 of WCR to allow loads and stores
+    wcr = bits_set(wcr, 1, 2, 0b11); // set bits 1-2 of WCR to allow user and privileged access
+    wcr = bit_set(wcr, 0);         // set bit 0 of WCR to enable the watchpoint
     cp14_wcr0_set(wcr);
-    prefetch_flush();
 
     watchpt_handler0 = handler;
 }
 
+void dummy_interrupt_vector(unsigned pc) {
+    panic("ERROR: undefined exception <interrupt> at PC=%x\n", pc);
+}
+
 // check for watchpoint fault and call <handler> if so.
 void data_abort_vector(unsigned pc) {
-    printk("!!!\n");
-    clean_reboot();
     static int nfaults = 0;
     printk("nfault=%d: data abort at %p\n", nfaults++, pc);
     if(datafault_from_ld())
@@ -52,7 +53,7 @@ void data_abort_vector(unsigned pc) {
 
     assert(watchpt_handler0);
     
-    uint32_t addr = far_get();
+    uint32_t addr = cp15_far_get();
     printk("far address = %p\n", addr);
 
     // should send all the registers so the client can modify.
@@ -70,8 +71,10 @@ void cp14_enable(void) {
     // for the core to take a debug exception, monitor debug mode has to be both 
     // selected and enabled --- bit 14 clear and bit 15 set.
     uint32_t dscr = cp14_dscr_get();
-    dscr = bit_set(dscr, 15);   // set bit 15 to enable monitor debug mode
-    dscr = bit_clr(dscr, 14);   // clear bit 14 to select monitor debug mode
+    dscr = bit_set(dscr, 15);  // set bit 15 to enable monitor debug mode
+    dscr = bit_clr(dscr, 14);  // clear bit 14 to select monitor debug mode
+    cp14_dscr_set(dscr);
+    assert (cp14_dscr_get() == dscr);
 
     prefetch_flush();
     // assert(!cp14_watchpoint_occured());
