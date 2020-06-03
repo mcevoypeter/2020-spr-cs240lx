@@ -18,7 +18,7 @@ void notmain(void) {
 
 
     // 13-6: get the debug id register value
-    uint32_t r = cp14_debug_id_get();
+    uint32_t r = cp14_didr_get();
     struct debug_id d = *(struct debug_id *)&r;
 
     // sanity check it.

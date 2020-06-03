@@ -10,39 +10,33 @@
  )*/
 static handler_t watchpt_handler0 = 0;
 
-// prefetch flush.
-#define prefetch_flush() unimplemented()
-
-// cp14_asm_get(wfar, c6, 0)
-static inline uint32_t cp14_wcr0_get(void) {
-    uint32_t wcr0;
-    asm("mrc p14, 0, %[result], c0, c0, 7" : [result] "=r" (wcr0) ::);
-    return wcr0;
-}
-static inline void cp14_wcr0_set(uint32_t r) {
-    asm("mcr p14, 0, %[result], c0, c0, 7" :: [result] "r" (r));
-    // prefetch flush
-}
-
-static inline uint32_t cp14_wvr0_get(void) { 
-    uint32_t wvr0;
-    asm("mrc p14, 0, %[result], c0, c0, 6" : [result] "=r" (wvr0) ::);
-    return wvr0;
-}
-static inline void cp14_wvr0_set(uint32_t r) { 
-    asm("mcr p14, 0, %[result], c0, c0, 6" :: [result] "r" (r));
-}
-
-// set the first watchpoint: calls <handler> on debug fault.
+// set the first watchpoint and call <handler> on debug fault: 13-47
 void watchpt_set0(void *_addr, handler_t handler) {
-    unimplemented();
+    // clear bit 0 of WCR to disable the watchpoint
+    uint32_t wcr = cp14_wcr0_get();
+    wcr = bit_clr(wcr, 0);
+    cp14_wcr0_set(wcr); 
 
+    // write the address to WVR
+    cp14_wvr0_set((uint32_t)_addr << 2);
+    // XXX: do I need a prefetch flush here?
+    
+    // enable the watchpoint
+    wcr = bit_clr(wcr, 20);         // set bit 20 of WCR to disable linking
+    wcr = bits_set(wcr, 5, 8, 0xf); // set bits 5-8 of WCR to select addresses
+    wcr = bits_set(wcr, 3, 4, 0x3); // set bits 3-4 of WCR to allow loads and stores
+    wcr = bits_set(wcr, 1, 2, 0x3); // set bits 1-2 of WCR to allow user and privileged access
+    wcr = bit_set(wcr, 0);          // set bit 0 of WCR to enable the watchpoint
+    cp14_wcr0_set(wcr);
     prefetch_flush();
+
     watchpt_handler0 = handler;
 }
 
 // check for watchpoint fault and call <handler> if so.
 void data_abort_vector(unsigned pc) {
+    printk("!!!\n");
+    clean_reboot();
     static int nfaults = 0;
     printk("nfault=%d: data abort at %p\n", nfaults++, pc);
     if(datafault_from_ld())
@@ -75,7 +69,9 @@ void cp14_enable(void) {
 
     // for the core to take a debug exception, monitor debug mode has to be both 
     // selected and enabled --- bit 14 clear and bit 15 set.
-    unimplemented();
+    uint32_t dscr = cp14_dscr_get();
+    dscr = bit_set(dscr, 15);   // set bit 15 to enable monitor debug mode
+    dscr = bit_clr(dscr, 14);   // clear bit 14 to select monitor debug mode
 
     prefetch_flush();
     // assert(!cp14_watchpoint_occured());

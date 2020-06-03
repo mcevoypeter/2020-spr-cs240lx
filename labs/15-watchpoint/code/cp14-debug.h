@@ -1,63 +1,12 @@
 #ifndef __CP14_DEBUG_H__
 #define __CP14_DEBUG_H__
 
-/********************************************************************
- * co-processor helper macro (should move to main header).
- *
- * you can use it or not, depending on if it helps you.
- *
- * 
- * cp14 instructions have the form:
- *
- *  mrc p14, opcode_1, <Rd>, Crn, Crm, opcode_2
- * where 
- *  opcode_1 = 0, 
- *  crn = 0
- * and you only set opcode_2 and crm.
- *
- * so:
- *  mrc p14, 0, <Rd>, c0, Crm, opcode_2
- */
 
-// turn <x> into a string
-#define MK_STR(x) #x
-
-// define a general co-processor inline assembly routine to set the value.
-// from manual: must prefetch-flush after each set.
-#define cp_asm_set(fn_name, coproc, opcode_1, Crn, Crm, opcode_2)       \
-    static inline void fn_name ## _set(uint32_t v) {                    \
-        asm volatile ("mcr " MK_STR(coproc) ", "                        \
-                             MK_STR(opcode_1) ", "                      \
-                             "%0, "                                     \
-                            MK_STR(Crn) ", "                            \
-                            MK_STR(Crm) ", "                            \
-                            MK_STR(opcode_2) :: "r" (v));               \
-    }
-
-#define cp_asm_get(fn_name, coproc, opcode_1, Crn, Crm, opcode_2)       \
-    static inline uint32_t fn_name ## _get(void) {                      \
-        uint32_t ret;                                                   \
-        asm volatile ("mrc " MK_STR(coproc) ", "                        \
-                             MK_STR(opcode_1) ", "                      \
-                             "%0, "                                     \
-                            MK_STR(Crn) ", "                            \
-                            MK_STR(Crm) ", "                            \
-                            MK_STR(opcode_2) : "=r" (ret));             \
-        return ret;                                                     \
-    }
-
-
-// specialize to cp14
-#define cp14_asm_set(fn, crm, op2) cp_asm_set(fn, p14, 0, c0, crm, op2)
-#define cp14_asm_get(fn, crm, op2) cp_asm_get(fn, p14, 0, c0, crm, op2)
-// do both _set and _get
-#define cp14_asm(fn,crm,op2) \
-    cp14_asm_set(fn,crm,op2)   \
-    cp14_asm_get(fn,crm,op2)
-
-/********************************************************************
- * part 0: get debug id register
- */
+// flush prefetch buffer: 3-79
+static inline void prefetch_flush(void) {
+    uint32_t r = 0;
+    asm volatile("mcr p15, 0, %[val], c7, c5, 4" :: [val] "r" (r));
+}
 
 struct debug_id {
     uint32_t    revision:4,     // 0:3  revision number
@@ -72,48 +21,71 @@ struct debug_id {
         ;
 };
 
-// 13-5
-static inline unsigned cp14_debug_id_get(void) {
+// DIDR: 13-5, 13-26
+static inline uint32_t cp14_didr_get(void) {
     uint32_t didr;
     asm volatile("mrc p14, 0, %[result], c0, c0, 0" : [result] "=r" (didr) ::);
     return didr;
 }
 
-/********************************************************************
- * part 1: set a watchpoint on 0 (test2.c/test3.c)
- */
-#include "bit-support.h"
-
-static inline uint32_t cp14_wfar_get(void) {
-    uint32_t wfar;
-    asm volatile("mrc p14, 0, %[result], c0, c6, 0" : [result] "=r" (wfar) ::);
-    return wfar;
-}
+// DSCR: 13-7, 13-26
 static inline uint32_t cp14_dscr_get(void) {
     uint32_t dscr;
     asm volatile("mrc p14, 0, %[result], c0, c1, 0" : [result] "=r" (dscr) ::);
     return dscr;
 }
 
-// see 3-65 (page 198 in my arm1176.pdf)
+// WFAR: 13-12, 13-26
+static inline uint32_t cp14_wfar_get(void) {
+    uint32_t wfar;
+    asm volatile("mrc p14, 0, %[result], c0, c6, 0" : [result] "=r" (wfar) ::);
+    return wfar;
+}
+
+// WVR0: 13-20, 13-26
+static inline uint32_t cp14_wvr0_get(void) { 
+    uint32_t wvr0;
+    asm volatile("mrc p14, 0, %[result], c0, c0, 6" : [result] "=r" (wvr0) ::);
+    return wvr0;
+}
+static inline void cp14_wvr0_set(uint32_t r) { 
+    asm volatile("mcr p14, 0, %[result], c0, c0, 6" :: [result] "r" (r));
+    prefetch_flush();
+}
+
+// WCR0: 13-21, 13-26
+static inline uint32_t cp14_wcr0_get(void) {
+    uint32_t wcr0;
+    asm volatile("mrc p14, 0, %[result], c0, c0, 7" : [result] "=r" (wcr0) ::);
+    return wcr0;
+}
+static inline void cp14_wcr0_set(uint32_t r) {
+    asm volatile("mcr p14, 0, %[val], c0, c0, 7" :: [val] "r" (r));
+    prefetch_flush();
+}
+
+// DFSR: 3-64
 static inline uint32_t cp15_dfsr_get(void) {
     uint32_t dfsr;
     asm volatile("mrc p15, 0, %[result], c5, c0, 0" : [result] "=r" (dfsr) ::);
     return dfsr;
 }
 
-// was watchpoint debug fault caused by a load?
+#include "bit-support.h"
+
+// reason for watchpoint debug fault: 3-64 
 static inline unsigned datafault_from_ld(void) {
-    unimplemented();
+    uint32_t dfsr = cp15_dfsr_get();
+    return !bit_isset(dfsr, 11);
 }
-// ...  by a store?
 static inline unsigned datafault_from_st(void) {
     return !datafault_from_ld();
 }
 
+// was this an instruction debug event fault?: 3-65
 static inline unsigned was_debugfault_r(uint32_t r) {
-    // "these bits are not set on debug event.
-    unimplemented();
+    uint32_t dfsr = cp15_dfsr_get();
+    return !bit_isset(dfsr, 10) && bits_get(dfsr, 0, 3) == 0x2;
 }
 
 // are we here b/c of a datafault?
@@ -122,7 +94,9 @@ static inline unsigned was_debug_datafault(void) {
     if(!was_debugfault_r(r))
         panic("impossible: should only get datafaults\n");
     // 13-11: watchpoint occured: bits [5:2] == 0b0010
-    unimplemented();
+    uint32_t dscr = cp14_dscr_get();
+    uint32_t source = bits_get(dscr, 2, 5);
+    return source == 0x1 || source == 0x2;
 }
 
 // 3-68: fault address register: hold the MVA that the fault occured at.
