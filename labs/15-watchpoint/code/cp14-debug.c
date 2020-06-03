@@ -15,23 +15,23 @@ static handler_t watchpt_handler0 = 0;
 
 // cp14_asm_get(wfar, c6, 0)
 static inline uint32_t cp14_wcr0_get(void) {
-    unimplemented();
+    uint32_t wcr0;
+    asm("mrc p14, 0, %[result], c0, c0, 7" : [result] "=r" (wcr0) ::);
+    return wcr0;
 }
 static inline void cp14_wcr0_set(uint32_t r) {
-    unimplemented();
+    asm("mcr p14, 0, %[result], c0, c0, 7" :: [result] "r" (r));
+    // prefetch flush
 }
 
-static inline uint32_t cp14_wvr0_get(void) { unimplemented(); }
-static inline void cp14_wvr0_set(uint32_t r) { unimplemented(); }
-
-static inline uint32_t cp14_status_get(void) {
-    unimplemented();
+static inline uint32_t cp14_wvr0_get(void) { 
+    uint32_t wvr0;
+    asm("mrc p14, 0, %[result], c0, c0, 6" : [result] "=r" (wvr0) ::);
+    return wvr0;
 }
-
-static inline void cp14_status_set(uint32_t v) {
-    unimplemented();
+static inline void cp14_wvr0_set(uint32_t r) { 
+    asm("mcr p14, 0, %[result], c0, c0, 6" :: [result] "r" (r));
 }
-
 
 // set the first watchpoint: calls <handler> on debug fault.
 void watchpt_set0(void *_addr, handler_t handler) {
@@ -53,8 +53,8 @@ void data_abort_vector(unsigned pc) {
         panic("impossible: should get no other faults\n");
 
     // this is the pc
-    printk("wfar address = %p, pc = %p\n", wfar_get()-8, pc);
-    assert(wfar_get()-4 == pc);
+    printk("wfar address = %p, pc = %p\n", cp14_wfar_get()-8, pc);
+    assert(cp14_wfar_get()-4 == pc);
 
     assert(watchpt_handler0);
     

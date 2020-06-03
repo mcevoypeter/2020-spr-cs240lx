@@ -58,7 +58,7 @@ DEPS := $(MEMMAP) $(LPI) $(LIBM) $(wildcard ./*.h) ./Makefile
 # i *think* order is important.
 LIBS = $(LPI)  
 
-all:  libs $(OBJS) $(TEST_BINARIES) $(TEST_RUN) # $(TEST_CHECK)
+all:  libs $(OBJS) $(TEST_BINARIES) # $(TEST_RUN) # $(TEST_CHECK)
 
 update:
 	cp part1-test*.c part1-test*.out ../code

@@ -74,7 +74,9 @@ struct debug_id {
 
 // 13-5
 static inline unsigned cp14_debug_id_get(void) {
-    unimplemented();
+    uint32_t didr;
+    asm volatile("mrc p14, 0, %[result], c0, c0, 0" : [result] "=r" (didr) ::);
+    return didr;
 }
 
 /********************************************************************
@@ -82,12 +84,22 @@ static inline unsigned cp14_debug_id_get(void) {
  */
 #include "bit-support.h"
 
-static inline uint32_t wfar_get(void) { unimplemented(); }
-static inline uint32_t dscr_get(void) { unimplemented(); }
+static inline uint32_t cp14_wfar_get(void) {
+    uint32_t wfar;
+    asm volatile("mrc p14, 0, %[result], c0, c6, 0" : [result] "=r" (wfar) ::);
+    return wfar;
+}
+static inline uint32_t cp14_dscr_get(void) {
+    uint32_t dscr;
+    asm volatile("mrc p14, 0, %[result], c0, c1, 0" : [result] "=r" (dscr) ::);
+    return dscr;
+}
 
 // see 3-65 (page 198 in my arm1176.pdf)
-static inline uint32_t dfsr_get(void) {
-    unimplemented();
+static inline uint32_t cp15_dfsr_get(void) {
+    uint32_t dfsr;
+    asm volatile("mrc p15, 0, %[result], c5, c0, 0" : [result] "=r" (dfsr) ::);
+    return dfsr;
 }
 
 // was watchpoint debug fault caused by a load?
@@ -106,7 +118,7 @@ static inline unsigned was_debugfault_r(uint32_t r) {
 
 // are we here b/c of a datafault?
 static inline unsigned was_debug_datafault(void) {
-    unsigned r = dfsr_get();
+    unsigned r = cp15_dfsr_get();
     if(!was_debugfault_r(r))
         panic("impossible: should only get datafaults\n");
     // 13-11: watchpoint occured: bits [5:2] == 0b0010
@@ -115,7 +127,9 @@ static inline unsigned was_debug_datafault(void) {
 
 // 3-68: fault address register: hold the MVA that the fault occured at.
 static inline uint32_t far_get(void) {
-    unimplemented();
+    uint32_t far;
+    asm volatile("mrc p15, 0, %[result], c6, c0, 0" : [result] "=r" (far) ::); 
+    return far;
 }
 
 
