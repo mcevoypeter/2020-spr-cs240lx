@@ -73,7 +73,11 @@ software_interrupt_asm:
 prefetch_abort_asm:
   mov sp, #INT_STACK_ADDR   
   sub   lr, lr, #4
+  push {r0-r12, lr}
+  mov r0, lr
   bl    prefetch_abort_vector
+  pop {r0-r12, lr}
+  movs pc, lr
 data_abort_asm:
   mov sp, #INT_STACK_ADDR   
   sub   lr, lr, #8

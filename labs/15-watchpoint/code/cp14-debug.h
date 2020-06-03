@@ -68,39 +68,33 @@ static inline void cp14_wcr0_set(uint32_t r) {
     prefetch_flush();
 }
 
+// BVR0: 13-16, 13-26
+static inline uint32_t cp14_bvr0_get(void) { 
+    uint32_t bvr0;
+    asm volatile("mrc p14, 0, %[result], c0, c0, 4" : [result] "=r" (bvr0) ::);
+    return bvr0;
+}
+static inline void cp14_bvr0_set(uint32_t r) {
+    asm volatile("mcr p14, 0, %[val], c0, c0, 4" :: [val] "r" (r));
+    prefetch_flush();
+}
+
+// BCR0: 13-17, 13-26
+static inline uint32_t cp14_bcr0_get(void) {
+    uint32_t bcr0;
+    asm volatile("mrc p14, 0, %[result], c0, c0, 5" : [result] "=r" (bcr0) ::);
+    return bcr0;
+}
+static inline void cp14_bcr0_set(uint32_t r) {
+    asm volatile("mcr p14, 0, %[val], c0, c0, 5" :: [val] "r" (r));
+    prefetch_flush();
+}
+
 // DFSR: 3-64
 static inline uint32_t cp15_dfsr_get(void) {
     uint32_t dfsr;
     asm volatile("mrc p15, 0, %[result], c5, c0, 0" : [result] "=r" (dfsr) ::);
     return dfsr;
-}
-
-#include "bit-support.h"
-
-// reason for watchpoint debug fault: 3-64 
-static inline unsigned datafault_from_ld(void) {
-    uint32_t dfsr = cp15_dfsr_get();
-    return !bit_isset(dfsr, 11);
-}
-static inline unsigned datafault_from_st(void) {
-    return !datafault_from_ld();
-}
-
-// was this an instruction debug event fault?: 3-65
-static inline unsigned was_debugfault_r(uint32_t r) {
-    uint32_t dfsr = cp15_dfsr_get();
-    return !bit_isset(dfsr, 10) && bits_get(dfsr, 0, 3) == 0x2;
-}
-
-// are we here b/c of a datafault?
-static inline unsigned was_debug_datafault(void) {
-    unsigned r = cp15_dfsr_get();
-    if(!was_debugfault_r(r))
-        panic("impossible: should only get datafaults\n");
-    // 13-11: watchpoint occured: bits [5:2] == 0b0010
-    uint32_t dscr = cp14_dscr_get();
-    uint32_t source = bits_get(dscr, 2, 5);
-    return source == 0x1 || source == 0x2;
 }
 
 // 3-68: fault address register: hold the MVA that the fault occured at.
@@ -110,6 +104,59 @@ static inline uint32_t cp15_far_get(void) {
     return far;
 }
 
+// ISFR: 3-66 (hold source of last instruction)
+static inline uint32_t cp15_ifsr_get(void) {
+    uint32_t ifsr;
+    asm volatile("mrc p15, 0, %[result], c5, c0, 1" : [result] "=r" (ifsr) ::);
+    return ifsr;
+}
+
+// IFAR: 3-69 (hold address of function that caused prefetch fault)
+static inline uint32_t cp15_ifar_get(void) {
+    uint32_t ifar;
+    asm volatile("mrc p15, 0, %[result], c6, c0, 1" : [result] "=r" (ifar) ::);
+    return ifar;
+}
+
+
+#include "bit-support.h"
+
+// reason for watchpoint debug fault: 3-64 
+static inline unsigned datafault_from_ld(void) {
+    uint32_t dfsr = cp15_dfsr_get();
+    // TODO: also check `was_debug_datafault`
+    return !bit_isset(dfsr, 11);
+}
+static inline unsigned datafault_from_st(void) {
+    return !datafault_from_ld();
+}
+
+// was this an instruction debug event fault?: 3-65
+static inline unsigned was_debugfault_r(uint32_t r) {
+    return !bit_isset(r, 10) && bits_get(r, 0, 3) == 0b10;
+}
+
+// was this a debug data fault?
+static inline unsigned was_debug_datafault(void) {
+    unsigned dfsr = cp15_dfsr_get();
+    if(!was_debugfault_r(dfsr))
+        panic("impossible: should only get datafaults\n");
+    // 13-11: watchpoint occured: bits [5:2] == 0b0010
+    uint32_t dscr = cp14_dscr_get();
+    uint32_t source = bits_get(dscr, 2, 5);
+    return source == 0b10;
+}
+
+// was this a debug instruction fault?
+static inline unsigned was_debug_instfault(void) {
+    uint32_t ifsr = cp15_ifsr_get();
+    if(!was_debugfault_r(ifsr))
+        panic("impossible: should only get datafaults\n");
+    // 13-11: watchpoint occured: bits [5:2] == 0b0010
+    uint32_t dscr = cp14_dscr_get();
+    uint32_t source = bits_get(dscr, 2, 5);
+    return source == 0b1;
+}
 
 // client supplied fault handler: give a pointer to the registers so 
 // the client can modify them (for the moment pass NULL)
@@ -117,32 +164,11 @@ static inline uint32_t cp15_far_get(void) {
 //  - <addr> is the fault address.
 typedef void (*handler_t)(uint32_t regs[16], uint32_t pc, uint32_t addr);
 
-// set a watchpoint at <addr>: calls <handler> with a pointer to the registers.
-void watchpt_set0(void *addr, handler_t watchpt_handle);
-
 // enable the co-processor.
 void cp14_enable(void);
 
-/********************************************************************
- * part 2: set a breakpoint on 0 (test4.c) / foo (test5.c)
- */
-
-
-// 3-66: instuction fault status register: hold source of last instruction
-// fault.
-static inline uint32_t ifsr_get(void) {
-    unimplemented();
-}
-
-// 3-69: holds address of function that caused prefetch fault.
-static inline uint32_t ifar_get(void) {
-    unimplemented();
-}
-
-// was this a debug instruction fault?
-static inline unsigned was_debug_instfault(void) {
-    unimplemented();
-}
+// set a watchpoint at <addr>: calls <handler> with a pointer to the registers.
+void watchpt_set0(uint32_t addr, handler_t watchpt_handle);
 
 // set a breakpoint at <addr>: call handler when the fault happens.
 void brkpt_set0(uint32_t addr, handler_t brkpt_handler);

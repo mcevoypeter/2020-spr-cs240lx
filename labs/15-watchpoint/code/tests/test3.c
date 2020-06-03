@@ -15,7 +15,7 @@ static void watchpt_handler(uint32_t regs[16], uint32_t pc, uint32_t addr) {
             datafault_from_ld() ? "ld" : "st", 
             addr,
             pc,
-            wfar_get()-8);
+            cp14_wfar_get()-8);
     if(datafault_from_ld())
         panic("test failed!\n");
     output("SUCCESS\n");

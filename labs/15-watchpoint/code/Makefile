@@ -4,7 +4,10 @@
 #   - "make runall" it will run all programs in TESTS
 # if you want to just grab all tests do:
 TESTS = ./tests/test1.c \
-		./tests/test2.c
+		./tests/test2.c \
+		./tests/test3.c \
+		./tests/test4.c \
+		./tests/test5.c 
 
 # uncomment this after test1.
 SYS_OBJS = cp14-debug.o interrupts-asm.o
