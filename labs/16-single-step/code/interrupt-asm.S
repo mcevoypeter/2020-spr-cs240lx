@@ -78,9 +78,11 @@ interrupt_asm:
 @   r0 = the cpsr value to set.
 @   r1 = the routine to call
 MK_FN(user_trampoline_no_ret)
-    mov r0, sp      @ save super mode sp
+    mov r2, sp      @ save super mode sp
     msr cpsr, r0    @ set cpsr - switches to user mode
-    mov sp, r0      @ use super mode sp as user mode sp
+    mov r3, #0
+    mcr p15, 0, r3, c7, c5, 4   @ prefetch flush
+    mov sp, r2      @ use super mode sp as user mode sp
     mov pc, r1      
     @ fail if they return.
     bl   brk_no_ret_error
