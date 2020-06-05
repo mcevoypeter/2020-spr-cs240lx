@@ -1,9 +1,10 @@
 TESTS = ./tests/16-part1-test1 \
 		./tests/16-part1-test2 \
 		./tests/16-part1-test3 \
-		./tests/16-part2-test1
+		./tests/16-part2-test1 \
+		./tests/16-part2-test2 
 
-SYS_OBJS = cp14-debug.o interrupt-asm.o
+SYS_OBJS = cp14-debug.o interrupt-asm.o check-interleave.o
 
 TESTS := $(patsubst %.c, %, $(TESTS))  
 GREP_STR := 'TRACE:\|ERROR:\|PANIC:' 

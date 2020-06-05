@@ -17,9 +17,13 @@ static void single_step_handler(uint32_t regs[16], uint32_t pc, uint32_t addr) {
         output("about to switch from %p to %p\n", pc, c->B);
 
         // 1. disable mismatch.
+        brkpt_mismatch_disable0(pc);
         // 2. set <switch_addr>, <switched_p>, <nswitches>
+        c->switch_addr = pc;
+        c->switched_p = (uintptr_t)c->B;  
+        c->nswitches++;
         // 3. call B.
-        unimplemented();
+        c->B(c);
 
         output("done running B, going to return to A\n");
     } else {
@@ -27,7 +31,7 @@ static void single_step_handler(uint32_t regs[16], uint32_t pc, uint32_t addr) {
         c->inst_count++;
 
         brk_debug("setting up a mismatch on %p\n", pc);
-        unimplemented();
+        brkpt_mismatch_set0(pc, single_step_handler);
         brk_debug("done setting up a mismatch on %p\n", pc);
     }
 }
@@ -43,7 +47,7 @@ static unsigned check_one_cswitch(checker_t *c) {
 
         brk_debug("trial=%d: about to set mismatch brkpt for A\n", c->ntrials);
         // set a mismatch on 0:  should always mismatch
-        unimplemented();
+        brkpt_mismatch_set0(0, single_step_handler);
 
         // switch on the next instruction: note, b/c of non-determ,
         // this does not mean we do the same prefix as previous trials.
@@ -52,7 +56,7 @@ static unsigned check_one_cswitch(checker_t *c) {
         c->switched_p = 0;
 
         // use <user_trampoline_ret> to start running c->A
-        unimplemented();
+        user_trampoline_ret(cpsr_user, (void (*)(void *))c->A, c);
 
         if(!c->check(c)) {
             output("ERROR: check failed when switched on address %p, after %d instructions\n",
