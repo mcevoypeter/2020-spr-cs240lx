@@ -5,10 +5,6 @@
 #include "cp14-debug.h"
 #include "bit-support.h"
 
-void dummy_interrupt_vector(unsigned pc) {
-    panic("ERROR: undefined exception <interrupt> at PC=%x\n", pc);
-}
-
 void cp14_enable(void) {
     static int init_p = 0;
 
@@ -137,7 +133,23 @@ void brk_no_ret_error(void) {
 }
 
 void brkpt_mismatch_set0(uint32_t addr, handler_t handler) {
-    unimplemented();
+    uint32_t bcr = brkpt_disable0();
+
+    // write the address to BVR
+    cp14_bvr0_set(addr);
+    assert(cp14_bvr0_get() == addr);
+    
+    // enable the watchpoint
+    bcr = bits_set(bcr, 21, 22, 0b10);      // set bits 21-22 of BCR to break on match
+    bcr = bit_clr(bcr, 20);                 // set bit 20 of BCR to disable linking
+    bcr = bits_clr(bcr, 14, 15);            // set bits 14-15 of BCR so breakpoint matches 
+    bcr = bits_set(bcr, 5, 8, 0b1111);      // set bits 5-8 of BCR to select addresses
+    bcr = bits_set(bcr, 1, 2, 0b11);        // set bits 1-2 of BCR to allow user and privileged access
+    bcr = bit_set(bcr, 0);                  // set bit 0 of BCR to enable the watchpoint
+    cp14_bcr0_set(bcr);
+    assert(cp14_bcr0_get() == bcr);
+
+    brkpt_handler0 = handler;
 }
 
 // should be this addr.
