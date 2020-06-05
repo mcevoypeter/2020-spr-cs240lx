@@ -105,15 +105,15 @@ MK_FN(user_trampoline_no_ret)
 MK_FN(user_trampoline_ret)
     push {r0-r12, lr}
     mov r3, sp          @ save super mode sp
+    mrs r4, cpsr        @ save super mode cspr
     msr cpsr, r0        @ set cpsr - switches to user mode
-    mov r4, #0
-    mcr p15, 0, r4, c7, c5, 4   @ prefetch flush
+    mov r5, #0
+    mcr p15, 0, r5, c7, c5, 4   @ prefetch flush
     mov sp, r3          @ use super mode sp as user mode sp
 
-    mov r3, r0          @ save old cpsr 
     mov r0, r2          @ pass routine the handle pointer
     blx r1              @ call routine
-    mov r0, r3          @ give syscall handler the cpsr value to set
+    mov r0, r4          @ give syscall handler the cpsr value to set
     swi 1 
     pop {r0-r12, lr}
     bx lr

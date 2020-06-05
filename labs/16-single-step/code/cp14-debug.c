@@ -171,9 +171,7 @@ int syscall_vector(unsigned pc, uint32_t r0) {
     // SWI: A4-210 of ARMv6 instruction manual
     uint32_t syscall_num = *(uint32_t *)pc & 0xffffff;
     assert(syscall_num == 1);
-    // set spsr to the cpsr value given to `user_trampoline_ret`
-    uint32_t cpsr = mode_set(r0, SUPER_MODE);
-    asm volatile("msr spsr, %[val]" :: [val] "r" (cpsr));
+    asm volatile("msr spsr, %[val]" :: [val] "r" (r0));
     prefetch_flush();
     return 0;
 }
