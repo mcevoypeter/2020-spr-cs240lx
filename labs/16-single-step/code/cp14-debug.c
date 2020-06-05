@@ -171,8 +171,7 @@ int syscall_vector(unsigned pc, uint32_t r0) {
     // SWI: A4-210 of ARMv6 instruction manual
     uint32_t syscall_num = *(uint32_t *)pc & 0xffffff;
     assert(syscall_num == 1);
-    asm volatile("msr spsr, %[val]" :: [val] "r" (r0));
-    prefetch_flush();
+    spsr_set(r0);
     return 0;
 }
 

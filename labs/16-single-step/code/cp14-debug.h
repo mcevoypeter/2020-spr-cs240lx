@@ -228,11 +228,14 @@ void brkpt_mismatch_disable0(uint32_t addr);
 
 // get the saved status register.
 static inline uint32_t spsr_get(void) {
-    unimplemented();
+    uint32_t spsr;
+    asm volatile("msr spsr, %[result]" : [result] "=r" (spsr) ::);
+    return spsr;
 }
 // set the saved status register.
 static inline void spsr_set(uint32_t spsr) {
-    unimplemented();
+    asm volatile("msr spsr, %[val]" :: [val] "r" (spsr));
+    prefetch_flush();
 }
 
 
