@@ -154,7 +154,11 @@ void brkpt_mismatch_set0(uint32_t addr, handler_t handler) {
 
 // should be this addr.
 void brkpt_mismatch_disable0(uint32_t addr) {
-    unimplemented();
+    // clear bit 0 of BCR to disable the breakpoint
+    uint32_t bcr = cp14_bcr0_get();
+    bcr = bit_clr(bcr, 0);
+    cp14_bcr0_set(bcr); 
+    assert(cp14_bcr0_get() == bcr);
 }
 
 // <pc> should point to the system call instruction.
@@ -164,5 +168,13 @@ void brkpt_mismatch_disable0(uint32_t addr) {
 // system call numbers:
 //  <1> - set spsr to the value of <r0>
 int syscall_vector(unsigned pc, uint32_t r0) {
-    unimplemented();
+    // SWI: A4-210 of ARMv6 instruction manual
+    uint32_t syscall_num = *(uint32_t *)pc & 0xffffff;
+    assert(syscall_num == 1);
+    // set spsr to the cpsr value given to `user_trampoline_ret`
+    uint32_t cpsr = mode_set(r0, SUPER_MODE);
+    asm volatile("msr spsr, %[val]" :: [val] "r" (cpsr));
+    prefetch_flush();
+    return 0;
 }
+

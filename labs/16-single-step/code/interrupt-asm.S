@@ -41,9 +41,12 @@ undefined_instruction_asm:
   sub   lr, lr, #4
   bl    undefined_instruction_vector
 software_interrupt_asm:
-  mov sp, #INT_STACK_ADDR   
-  sub   lr, lr, #4
-  bl    software_interrupt_vector
+  push {r0-r12, lr}
+  mov r1, r0
+  sub   r0, lr, #4
+  bl    syscall_vector
+  pop {r0-r12, lr}
+  movs pc, lr
 prefetch_abort_asm:
   mov sp, #INT_STACK_ADDR   
   sub   lr, lr, #4
@@ -100,6 +103,17 @@ MK_FN(user_trampoline_no_ret)
 @ trouble with this is that we need to do a system call to change
 @ to super mode.  i don't know if this is the right thing.
 MK_FN(user_trampoline_ret)
-    @ put your code here.
+    push {r0-r12, lr}
+    mov r3, sp          @ save super mode sp
+    msr cpsr, r0        @ set cpsr - switches to user mode
+    mov r4, #0
+    mcr p15, 0, r4, c7, c5, 4   @ prefetch flush
+    mov sp, r3          @ use super mode sp as user mode sp
 
+    mov r3, r0          @ save old cpsr 
+    mov r0, r2          @ pass routine the handle pointer
+    blx r1              @ call routine
+    mov r0, r3          @ give syscall handler the cpsr value to set
+    swi 1 
+    pop {r0-r12, lr}
     bx lr
