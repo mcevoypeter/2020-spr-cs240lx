@@ -1,12 +1,12 @@
-#TESTS = ./tests/16-part1-test1 \
-		#./tests/16-part1-test2 \
-		#./tests/16-part1-test3 \
-		#./tests/16-part2-test1 \
-		#./tests/16-part2-test2 \
-		#./tests/16-part2-test3 \
-		#./tests/16-part2-test4 \
-		#./tests/16-part2-test5 
-TESTS = ./tests/16-part2-test6 
+TESTS = ./tests/16-part1-test1 \
+		./tests/16-part1-test2 \
+		./tests/16-part1-test3 \
+		./tests/16-part2-test1 \
+		./tests/16-part2-test2 \
+		./tests/16-part2-test3 \
+		./tests/16-part2-test4 \
+		./tests/16-part2-test5 \
+		./tests/16-part2-test6 
 
 SYS_OBJS = cp14-debug.o interrupt-asm.o check-interleave.o
 

@@ -178,7 +178,12 @@ int syscall_vector(unsigned pc, uint32_t r0) {
             return 0;
         case 2:;
             lock_t *l = (lock_t *)r0;
-            return *l == 0;
+            // lock was unlocked and can be locked
+            if (*l == 0) {
+                *l = 1;
+                return 1;
+            }
+            return 0;
         default:
             panic("%u is an invalid syscall number\n");
     }

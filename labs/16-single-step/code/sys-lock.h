@@ -16,6 +16,6 @@ static inline void sys_lock(lock_t *l) {
     assert(*l == 1);
 }
 static inline void sys_unlock(lock_t *l) { 
-    //assert(*l == 1);
+    assert(*l == 1);
     *l = 0; 
 }
