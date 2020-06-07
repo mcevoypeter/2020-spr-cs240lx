@@ -41,11 +41,11 @@ undefined_instruction_asm:
   sub   lr, lr, #4
   bl    undefined_instruction_vector
 software_interrupt_asm:
-  push {r0-r12, lr}
+  push {r4-r12, lr}
   mov r1, r0
   sub   r0, lr, #4
   bl    syscall_vector
-  pop {r0-r12, lr}
+  pop {r4-r12, lr}      @ don't pop r0 because we need the return value from syscall_vector
   movs pc, lr
 prefetch_abort_asm:
   mov sp, #INT_STACK_ADDR   
@@ -121,7 +121,7 @@ MK_FN(user_trampoline_ret)
  @ arguments:
  @   r0 = address of the lock 
  MK_FN(sys_try_lock_asm)
-    push {r0-r12, lr}
+    push {r4-r12, lr}
     swi 2
-    pop {r0-r12, lr}
+    pop {r4-r12, lr}
     bx lr
