@@ -4,6 +4,7 @@
 #include "libc/helper-macros.h"
 #include "cp14-debug.h"
 #include "bit-support.h"
+#include "sys-lock.h"
 
 void cp14_enable(void) {
     static int init_p = 0;
@@ -170,8 +171,16 @@ void brkpt_mismatch_disable0(uint32_t addr) {
 int syscall_vector(unsigned pc, uint32_t r0) {
     // SWI: A4-210 of ARMv6 instruction manual
     uint32_t syscall_num = *(uint32_t *)pc & 0xffffff;
-    assert(syscall_num == 1);
-    spsr_set(r0);
-    return 0;
+    switch (syscall_num) {
+        case 1:;
+            uint32_t cpsr = r0;
+            spsr_set(cpsr);
+            return 0;
+        case 2:;
+            lock_t *l = (lock_t *)r0;
+            return *l == 0;
+        default:
+            panic("%u is an invalid syscall number\n");
+    }
 }
 

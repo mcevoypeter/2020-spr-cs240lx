@@ -1,11 +1,12 @@
-TESTS = ./tests/16-part1-test1 \
-		./tests/16-part1-test2 \
-		./tests/16-part1-test3 \
-		./tests/16-part2-test1 \
-		./tests/16-part2-test2 \
-		./tests/16-part2-test3 \
-		./tests/16-part2-test4 \
-		./tests/16-part2-test5 
+#TESTS = ./tests/16-part1-test1 \
+		#./tests/16-part1-test2 \
+		#./tests/16-part1-test3 \
+		#./tests/16-part2-test1 \
+		#./tests/16-part2-test2 \
+		#./tests/16-part2-test3 \
+		#./tests/16-part2-test4 \
+		#./tests/16-part2-test5 
+TESTS = ./tests/16-part2-test6 
 
 SYS_OBJS = cp14-debug.o interrupt-asm.o check-interleave.o
 
@@ -89,7 +90,7 @@ checkall: $(TEST_CHECK) $(TEST_BINARIES)
 runall: $(TEST_RUN) 
 
 tags: 
-	ctags *.[chSs] $(LPP)/*.[ch] $(LPP)/*.[chSs] 
+	ctags *.[chSs] $(LPP)/**/*.[chSs] 
 
 clean:
 	rm -rf $(BUILD_DIR) $(NAME) *~ tags $(OBJS) *.bin *.elf *.list *.img Makefile.bak  *.d *.test

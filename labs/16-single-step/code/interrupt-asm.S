@@ -117,3 +117,11 @@ MK_FN(user_trampoline_ret)
     swi 1 
     pop {r0-r12, lr}
     bx lr
+
+ @ arguments:
+ @   r0 = address of the lock 
+ MK_FN(sys_try_lock_asm)
+    push {r0-r12, lr}
+    swi 2
+    pop {r0-r12, lr}
+    bx lr
