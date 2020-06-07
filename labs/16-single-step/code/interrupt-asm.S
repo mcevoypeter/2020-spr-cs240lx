@@ -81,7 +81,6 @@ interrupt_asm:
 @   r0 = the cpsr value to set.
 @   r1 = the routine to call
 MK_FN(user_trampoline_no_ret)
-    mov r2, sp      @ save super mode sp
     msr cpsr, r0    @ set cpsr - switches to user mode
     mov r3, #0
     mcr p15, 0, r3, c7, c5, 4   @ prefetch flush
@@ -104,7 +103,6 @@ MK_FN(user_trampoline_no_ret)
 @ to super mode.  i don't know if this is the right thing.
 MK_FN(user_trampoline_ret)
     push {r0-r12, lr}
-    mov r3, sp          @ save super mode sp
     mrs r4, cpsr        @ save super mode cspr
     msr cpsr, r0        @ set cpsr - switches to user mode
     mov r5, #0
