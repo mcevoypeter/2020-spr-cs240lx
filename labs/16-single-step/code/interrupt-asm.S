@@ -123,3 +123,9 @@ MK_FN(user_trampoline_ret)
     swi 2
     pop {r4-r12, lr}
     bx lr
+
+MK_FN(sys_foo_asm)
+    push {r4-r12, lr}
+    swi 3
+    pop {r4-r12, lr}
+    bx lr

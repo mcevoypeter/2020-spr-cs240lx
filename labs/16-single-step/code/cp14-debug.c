@@ -184,6 +184,8 @@ int syscall_vector(unsigned pc, uint32_t r0) {
                 return 1;
             }
             return 0;
+        case 3:
+            return 3;
         default:
             panic("%u is an invalid syscall number\n");
     }

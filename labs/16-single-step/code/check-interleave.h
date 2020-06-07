@@ -16,7 +16,7 @@ typedef struct checker {
 
     // can use nested functions if you want to pass data.
     void (*A)(struct checker *);
-    void (*B)(struct checker *);
+    int (*B)(struct checker *);
 
     // initialize the state.
     void (*init)(struct checker *c);
@@ -68,6 +68,9 @@ typedef struct checker {
 
     // set when we start doing interleave checking.
     unsigned interleaving_p;
+
+    // number of times we've skipped instructions b/c B failed.
+    volatile uint32_t skips;
 } checker_t;
 
 // check the routines A and B pointed to in <c>

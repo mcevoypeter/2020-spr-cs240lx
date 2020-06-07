@@ -1,12 +1,15 @@
-TESTS = ./tests/16-part1-test1 \
-		./tests/16-part1-test2 \
-		./tests/16-part1-test3 \
-		./tests/16-part2-test1 \
-		./tests/16-part2-test2 \
-		./tests/16-part2-test3 \
-		./tests/16-part2-test4 \
-		./tests/16-part2-test5 \
-		./tests/16-part2-test6 
+TESTS = ./tests2.0/16-part1-test1 \
+		./tests2.0/16-part1-test2 \
+		./tests2.0/16-part1-test3 \
+		./tests2.0/16-part2-test2 \
+		./tests2.0/16-part2-test3 \
+		./tests2.0/16-part2-test4 \
+		./tests2.0/16-part2-test5 \
+		./tests2.0/16-part2-test6 \
+		./tests2.0/16-part2-test7 \
+		./tests2.0/16-part2-test8 \
+		./tests2.0/16-part2-test9 \
+		./tests2.0/16-part2-test10
 
 SYS_OBJS = cp14-debug.o interrupt-asm.o check-interleave.o
 

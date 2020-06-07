@@ -16,16 +16,20 @@ static void single_step_handler(uint32_t regs[16], uint32_t pc, uint32_t addr) {
     if(c->inst_count == c->switch_on_inst_n) {
         output("about to switch from %p to %p\n", pc, c->B);
 
-        // 1. disable mismatch.
-        brkpt_mismatch_disable0(pc);
-        // 2. set <switch_addr>, <switched_p>, <nswitches>
-        c->switch_addr = pc;
-        c->switched_p = (uintptr_t)c->B;  
-        c->nswitches++;
-        // 3. call B.
-        c->B(c);
-
-        output("done running B, going to return to A\n");
+        if (c->B((void *)c)) {
+            // 1. disable mismatch.
+            brkpt_mismatch_disable0(pc);
+            // 2. set <switch_addr>, <switched_p>, <nswitches>
+            c->switch_addr = pc;
+            c->switched_p = (uintptr_t)c->B;  
+            c->nswitches++;
+            output("done running B, going to return to A\n");
+            return;
+        } 
+        // B failed
+        output("B failed on step=%d: going to try next instruction\n", c->inst_count);
+        c->switch_on_inst_n++;
+        c->skips++;
     } else {
         assert(c->inst_count < c->switch_on_inst_n);
         c->inst_count++;
@@ -99,7 +103,8 @@ static unsigned check_sequential(checker_t *c) {
         c->init(c);
 
         c->A(c);
-        c->B(c);
+        if(!c->B(c))
+            panic("B should not fail\n");
         if(!c->check(c))
             panic("check failed sequentially: code is broken\n");
 
