@@ -64,8 +64,9 @@ static unsigned dom_perm_get(unsigned dom) {
 static void dom_perm_set(unsigned dom, unsigned perm) {
     assert(dom < 16);
     assert(perm == DOM_client || perm == DOM_no_access);
-
-    unimplemented();
+    unsigned x = read_domain_access_ctrl();
+    x = bits_set(x, dom*2, (dom+1)*2, perm);
+    write_domain_access_ctrl(x);
 }
 
 
@@ -79,20 +80,63 @@ void memcheck_continue_after_fault(void) {
     mmu_resume_p = 1;
 }
 
+typedef enum {
+    alignment = 0b1,
+    tlb_miss = 0b0,
+    alignment_deprecated = 0b11,
+    operation_fault = 0b100,
+    abort_on_first_translation = 0b1100,
+    abort_on_second_translation = 0b1110,
+    translation_section = 0b101,
+    translation_page = 0b111,
+    domain_section = 0b1001,
+    domain_page = 0b1011,
+    permission_section = 0b1101,
+    permission_page = 0b1111,
+    external_abort_precise = 0b1000,
+    external_abort_deprecated = 0b1010,
+    tlb_lock = 0b10100,
+    coproc_data_abort = 0b11010,
+    external_abort_imprecise = 0b10110,
+    parity_error_exception = 0b11000,
+    debug_event = 0b10
+} reason_t;
 // simple data abort handle: handle the different reasons for the tests.
 void data_abort_vector(unsigned lr) {
     if(was_debug_datafault())
         mem_panic("should not have this\n");
 
     // b4-43
-    unsigned dfsr = dfsr_get();
-    unsigned fault_addr = far_get();
+    unsigned dfsr = cp15_dfsr_get();
+    unsigned fault_addr = cp15_far_get();
 
-    // compute the rason.
-    unsigned reason = 0;
-    unimplemented();
+    // compute the reason.
+    // b4-43: reason is bits [10,3:0] of dfsr.
+    unsigned reason = bits_get(dfsr, 10, 10) | bits_get(dfsr, 0, 3);
+    trace("reason = %b\n", reason);
 
     last_fault_set(lr, fault_addr, reason);
+
+    switch (reason) {
+        case translation_section:
+            // TODO: replace with trace_clean_exit
+            trace("section xlate fault: addr=%p, at pc=%p\n", fault_addr, lr);
+            clean_reboot();
+        case domain_section: 
+            if (!mmu_resume_p) {
+                // TODO: replace with trace_clean_exit
+                trace("Going to die!\n");
+                clean_reboot();
+            } else {
+                trace("goint to try to resume\n");
+                memcheck_trap_disable();
+                return;
+            }
+        case permission_section:
+            panic("section permission fault: %x", fault_addr);
+        default: 
+            panic("unkown reason %b\n", reason);
+    }
 
     /*
          for SECTION_XLATE_FAULT:

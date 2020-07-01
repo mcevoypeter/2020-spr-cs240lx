@@ -10,7 +10,11 @@ TESTS = ./tests/part2-test3.c
 TESTS = ./tests/part2-test4.c
 
 # should just work
-TESTS = ./tests/part2-test1.c 
+TESTS = ./tests/part2-test1.c \
+		./tests/part2-test2.c \
+		./tests/part2-test3.c \
+		./tests/part2-test4.c 
+
 
 # part1-test2 part1-test3 part1-test4
 # part1-test1 part1-test2 part1-test3 part1-test4
@@ -30,7 +34,7 @@ GREP_STR := 'GC:\|ERROR:\|PANIC:'
 
 # ALL_ASM := $(wildcard ./*.S)
 # $(patsubst %.S, %.o, $(ALL_ASM))  
-SYS_OBJS = interrupts-asm.o mmu.o mmu-helpers.o memcheck.o
+SYS_OBJS = interrupts-asm.o mmu.o mmu-helpers.o memcheck.o cp14-debug.o
 
 ALL_SOURCES := $(wildcard ./*.c)
 OBJS := $(SYS_OBJS)

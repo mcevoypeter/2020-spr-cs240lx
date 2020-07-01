@@ -44,5 +44,7 @@ void notmain() {
     for(int i = 0; i < 10; i++) 
         test_resume(sp, i);
 
-    trace_clean_exit("success!!\n");
+    //trace_clean_exit("success!!\n");
+    trace("success!!\n");
+    clean_reboot();
 }

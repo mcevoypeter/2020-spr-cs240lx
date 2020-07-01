@@ -35,5 +35,8 @@ void notmain() {
     assert(GET32(sp) == val);
     trace("correct: %p == %d\n", sp, val);
 
-    trace_clean_exit("success!!\n");
+
+    //trace_clean_exit("success!!\n");
+    trace("success!!\n");
+    clean_reboot();
 }
