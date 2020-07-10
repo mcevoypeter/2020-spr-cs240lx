@@ -6,4 +6,6 @@
 int user_mode_run_fn(int (*fn)(void), uint32_t sp);
 
 int sys_10_asm(void);
+
+int shadow_mem_set(uint32_t addr, uint32_t n, uint32_t state);
 #endif

@@ -169,24 +169,37 @@ void brkpt_mismatch_disable0(uint32_t addr) {
 // 
 // system call numbers:
 //  <1> - set spsr to the value of <r0>
-int syscall_vector(unsigned pc, uint32_t r0) {
+#include "memcheck.h"
+#include "memcheck-internal.h"
+int syscall_vector(unsigned pc, uint32_t r0, uint32_t r1, uint32_t r2) {
     // SWI: A4-210 of ARMv6 instruction manual
     uint32_t syscall_num = *(uint32_t *)pc & 0xffffff;
     switch (syscall_num) {
-        case 1:;
+        case 0:;
             uint32_t spsr = r0;
             spsr_set(spsr);
             return 0;
-        case 2:;
-            lock_t *l = (lock_t *)r0;
-            // lock was unlocked and can be locked
-            if (*l == 0) {
-                *l = 1;
-                return 1;
-            }
+        case 1:;
+            // TODO: pass more arguments to syscall
+            // TODO: turn tracking off
+            void *addr = (void *)r0;
+            uint32_t n = r1;
+            uint32_t state = r2;
+            trace("setting %u bytes of shadow memory starting at %p as %b\n", 
+                    n, addr, state);
+
+            // enable access to shadow memory
+            dom_perm_set(shadow_id, DOM_client);
+            assert(dom_perm_get(shadow_id) == DOM_client);
+
+            // set shadow memory to alloced
+            memset(addr, state, n);
+
+            // disable access to shadow memory
+            dom_perm_set(shadow_id, DOM_no_access);
+            assert(dom_perm_get(shadow_id) == DOM_no_access);
+
             return 0;
-        case 3:
-            return 3;
         case 10: 
             return 10;
         default:

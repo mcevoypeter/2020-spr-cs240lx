@@ -16,9 +16,17 @@ MK_FN(user_mode_run_fn)
     blx r2          @ call routine
     mov r5, r0      @ save return value of routine
     mov r0, r4      @ give syscall handler the cpsr value to set
-    swi 1           
+    swi 0           
     mov r0, r5      @ move return value into r0
     pop {r2-r12, lr}
+    bx lr
+
+@ arguments:
+@   r0 = permission
+MK_FN(shadow_mem_set)
+    push {r4-r12, lr}
+    swi 1
+    pop {r4-r12, lr}
     bx lr
 
 @ arguments:
@@ -28,3 +36,4 @@ MK_FN(sys_10_asm)
     swi 10
     pop {r4-r12, lr}
     bx lr
+

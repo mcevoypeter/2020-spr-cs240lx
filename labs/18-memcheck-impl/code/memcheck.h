@@ -55,6 +55,12 @@ last_fault_t last_fault_get(void);
 // check that the last fault was at pc, using addr with <reason>
 void fault_expected(uint32_t pc, uint32_t addr, uint32_t reason);
 
+enum { OneMB = 1024 * 1024 };
+
+// don't use dom id = 0 --- too easy to miss errors.
+enum { dom_id = 1, track_id = 2, shadow_id = 3 };
+unsigned dom_perm_get(unsigned dom);
+void dom_perm_set(unsigned dom, unsigned perm);
 #include "cpsr-util.h"
 
 #endif

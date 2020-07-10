@@ -16,10 +16,6 @@
 #include "cp14-debug.h"
 #include "libc/helper-macros.h"
 
-enum { OneMB = 1024 * 1024 };
-
-// don't use dom id = 0 --- too easy to miss errors.
-enum { dom_id = 1, track_id = 2 };
 
 /**********************************************************************
  * helper code to track the last fault (used for testing).
@@ -54,14 +50,14 @@ void fault_expected(uint32_t pc, uint32_t addr, uint32_t reason) {
     DOM_manager = 0b11,      // TLB access bits are ignored.
  */
 
-static unsigned dom_perm_get(unsigned dom) {
+unsigned dom_perm_get(unsigned dom) {
     unsigned x = read_domain_access_ctrl();
     return bits_get(x, dom*2, (dom+1)*2);
 }
 
 // set the permission bits for domain id <dom> to <perm>
 // leave the other domains the same.
-static void dom_perm_set(unsigned dom, unsigned perm) {
+void dom_perm_set(unsigned dom, unsigned perm) {
     assert(dom < 16);
     assert(perm == DOM_client || perm == DOM_no_access);
     unsigned x = read_domain_access_ctrl();
@@ -175,6 +171,7 @@ void interrupt_vector(unsigned lr) {
 static fld_t *pt = 0;
 
 // need some parameters for this.
+static uintptr_t heap_start, shadow_mem_start;
 void memcheck_init(void) {
     // 1. init
     mmu_init();
@@ -203,13 +200,14 @@ void memcheck_init(void) {
     mmu_map_section(pt, 0x20200000, 0x20200000, dom_id);
 
     // map heap 
-    uintptr_t heap_start = (uintptr_t)pt + OneMB;
+    heap_start = (uintptr_t)pt + OneMB;
     kmalloc_init_set_start(heap_start);
     mmu_map_section(pt, heap_start, heap_start, track_id);
 
     // map shadow memory
-    uintptr_t shadow_mem_start = heap_start + OneMB;
-    mmu_map_section(pt, shadow_mem_start, shadow_mem_start, dom_id);
+    shadow_mem_start = heap_start + OneMB;
+    mmu_map_section(pt, shadow_mem_start, shadow_mem_start, shadow_id);
+    dom_perm_set(shadow_id, DOM_no_access);
 
     // if we don't setup the interrupt stack = super bad infinite loop
     mmu_map_section(pt, INT_STACK_ADDR-OneMB, INT_STACK_ADDR-OneMB, dom_id);
@@ -303,8 +301,12 @@ int memcheck_fn(int (*fn)(void)) {
 }
 
 // for the moment, we just call these special allocator and free routines.
+#include "memcheck-internal.h"
 void *memcheck_alloc(unsigned n) {
-    unimplemented();
+    uintptr_t ptr = (uintptr_t)kmalloc(n);
+    assert(heap_start <= ptr && ptr < heap_start + OneMB);
+    shadow_mem_set(ptr+OneMB, n, SH_ALLOCED);
+    return (void *)ptr;
 }
 
 void memcheck_free(void *ptr) {

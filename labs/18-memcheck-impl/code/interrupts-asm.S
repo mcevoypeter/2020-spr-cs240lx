@@ -42,6 +42,8 @@ undefined_instruction_asm:
   bl    undefined_instruction_vector
 software_interrupt_asm:
   push {r4-r12, lr}
+  mov r3, r2
+  mov r2, r1
   mov r1, r0
   sub   r0, lr, #4
   bl    syscall_vector
