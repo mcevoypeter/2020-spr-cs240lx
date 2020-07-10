@@ -1,7 +1,9 @@
 #ifndef __SYS_CALL_H__
 #define __SYS_CALL_H__
 
-int user_mode_run_fn(int (*fn)(void), unsigned user_stack);
+// assembly routine: run <fn> at user level with stack <sp>
+//    XXX: visible here just so we can use it for testing.
+int user_mode_run_fn(int (*fn)(void), uint32_t sp);
 
 int sys_10_asm(void);
 #endif
