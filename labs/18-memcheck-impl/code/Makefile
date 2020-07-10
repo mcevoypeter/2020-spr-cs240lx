@@ -3,8 +3,8 @@
 #   - "make emitall" it emit .outs for all programs in TESTS
 #   - "make runall" it will run all programs in TESTS
 # should just work
-TESTS = ./tests/test0.c \
-		./tests/test1.c
+TESTS = ./tests/part1-test0.c \
+		./tests/part1-test1.c
 
 # part1-test2 part1-test3 part1-test4
 # part1-test1 part1-test2 part1-test3 part1-test4
@@ -24,7 +24,7 @@ GREP_STR := 'GC:\|ERROR:\|PANIC:'
 
 # ALL_ASM := $(wildcard ./*.S)
 # $(patsubst %.S, %.o, $(ALL_ASM))  
-SYS_OBJS = interrupts-asm.o mmu.o mmu-helpers.o memcheck.o cp14-debug.o
+SYS_OBJS = interrupts-asm.o mmu.o mmu-helpers.o memcheck.o cp14-debug.o sys-call-asm.o
 
 ALL_SOURCES := $(wildcard ./*.c)
 OBJS := $(SYS_OBJS)

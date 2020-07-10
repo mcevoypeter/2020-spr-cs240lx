@@ -267,11 +267,12 @@ void memcheck_trap_enable(void) {
     assert(memcheck_trap_enabled());
 }
 
-extern int user_mode_run_fn(int (*fn)(void), unsigned user_stack_addr);
+#include "sys-call-asm.h"
 int memcheck_fn(int (*fn)(void)) {
     static int initialized_memcheck = 0;
     if (!initialized_memcheck) {
         cp14_enable();
+        initialized_memcheck = 1;
     }
     memcheck_trap_enable();
     int ret_val = user_mode_run_fn(fn, STACK_ADDR2);
