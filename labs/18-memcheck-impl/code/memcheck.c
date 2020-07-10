@@ -80,6 +80,13 @@ void memcheck_continue_after_fault(void) {
     mmu_resume_p = 1;
 }
 
+static void single_step_handler(uint32_t regs[16], uint32_t pc, uint32_t addr) {
+    trace("got breakpoint mismatch at pc=%p, addr=%p\n", pc, addr);
+    memcheck_trap_enable();
+    // TODO: is addr the correct address here?
+    brkpt_mismatch_disable0(pc-4);
+}
+
 typedef enum {
     alignment = 0b1,
     tlb_miss = 0b0,
@@ -113,25 +120,21 @@ void data_abort_vector(unsigned lr) {
     // compute the reason.
     // b4-43: reason is bits [10,3:0] of dfsr.
     unsigned reason = bits_get(dfsr, 10, 10) | bits_get(dfsr, 0, 3);
-    trace("reason = %b\n", reason);
 
     last_fault_set(lr, fault_addr, reason);
 
     switch (reason) {
+        case domain_section: 
+            trace("got domain section fault for addr %p, at pc %p, for reason %b\n",
+                    fault_addr, lr, reason);
+            memcheck_trap_disable();
+            brkpt_mismatch_set0(lr, single_step_handler);
+            break;
+            // set single step mismatch
         case translation_section:
             // TODO: replace with trace_clean_exit
             trace("section xlate fault: addr=%p, at pc=%p\n", fault_addr, lr);
             clean_reboot();
-        case domain_section: 
-            if (!mmu_resume_p) {
-                // TODO: replace with trace_clean_exit
-                trace("Going to die!\n");
-                clean_reboot();
-            } else {
-                trace("goint to try to resume\n");
-                memcheck_trap_disable();
-                return;
-            }
         case permission_section:
             panic("section permission fault: %x", fault_addr);
         default: 
@@ -190,12 +193,23 @@ void memcheck_init(void) {
     mmu_map_section(pt, 0x100000,  0x100000, dom_id);
     // map stack (grows down)
     mmu_map_section(pt, STACK_ADDR-OneMB, STACK_ADDR-OneMB, dom_id);
+    // map user stack (grows down)
+    mmu_map_section(pt, STACK_ADDR2-OneMB, STACK_ADDR2-OneMB, dom_id);
 
     // map the GPIO: make sure these are not cached and not writeback.
     // [how to check this in general?]
     mmu_map_section(pt, 0x20000000, 0x20000000, dom_id);
     mmu_map_section(pt, 0x20100000, 0x20100000, dom_id);
     mmu_map_section(pt, 0x20200000, 0x20200000, dom_id);
+
+    // map heap 
+    uintptr_t heap_start = (uintptr_t)pt + OneMB;
+    kmalloc_init_set_start(heap_start);
+    mmu_map_section(pt, heap_start, heap_start, track_id);
+
+    // map shadow memory
+    uintptr_t shadow_mem_start = heap_start + OneMB;
+    mmu_map_section(pt, shadow_mem_start, shadow_mem_start, dom_id);
 
     // if we don't setup the interrupt stack = super bad infinite loop
     mmu_map_section(pt, INT_STACK_ADDR-OneMB, INT_STACK_ADDR-OneMB, dom_id);
@@ -235,14 +249,14 @@ void memcheck_map(uint32_t base) {
     assert(is_aligned(base,OneMB));
 
     // XXX: need to handle when it's already mapped.
-    mmu_map_section(pt, base, base + OneMB, dom_id);
+    mmu_map_section(pt, base, base, dom_id);
 }
 
 void memcheck_track(uint32_t base) {
     assert(is_aligned(base,OneMB));
 
     // XXX: need to handle when it's already mapped.
-    mmu_map_section(pt, base, base + OneMB, track_id);
+    mmu_map_section(pt, base, base, track_id);
 }
 
 void memcheck_no_access(uint32_t base) {
@@ -274,16 +288,17 @@ int memcheck_fn(int (*fn)(void)) {
     if (!initialized_memcheck) {
         memcheck_init();
         single_step_init();
-        uintptr_t heap_start = (uintptr_t)pt + OneMB;
-        kmalloc_init_set_start(heap_start);
-        memcheck_map(heap_start);
-        uintptr_t shadow_mem_start = heap_start + OneMB;
-        memcheck_map(shadow_mem_start);
         initialized_memcheck = 1;
     }
-    memcheck_trap_enable();
+             
+    memcheck_on();
+    assert(mmu_is_enabled());
+    assert(mode_is_super());
     int ret_val = user_mode_run_fn(fn, STACK_ADDR2);
-    memcheck_trap_disable();
+    assert(mmu_is_enabled());
+    assert(mode_is_super());
+    memcheck_off();
+    assert(!mmu_is_enabled());
     return ret_val;
 }
 

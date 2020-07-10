@@ -15,6 +15,7 @@ int notmain_client() {
     trace("expect 'domain section fault' for addr %p, at pc %p\n", x, put32);
     put32(x, 5);
 
+    trace("expect 'domain section fault' for addr %p, at pc %p\n", x, get32);
     assert(get32(x) == 5);
     return 0x12345678;
 }

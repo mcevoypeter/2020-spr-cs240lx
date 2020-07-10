@@ -5,7 +5,8 @@
 # should just work
 TESTS = ./tests/part1-test0.c \
 		./tests/part1-test1.c \
-		./tests/part1-test2.c
+		./tests/part1-test2.c \
+		./tests/part2-test0.c 
 
 # part1-test2 part1-test3 part1-test4
 # part1-test1 part1-test2 part1-test3 part1-test4
