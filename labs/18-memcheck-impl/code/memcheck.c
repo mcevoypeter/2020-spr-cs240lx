@@ -274,6 +274,11 @@ int memcheck_fn(int (*fn)(void)) {
     if (!initialized_memcheck) {
         memcheck_init();
         single_step_init();
+        uintptr_t heap_start = (uintptr_t)pt + OneMB;
+        kmalloc_init_set_start(heap_start);
+        memcheck_map(heap_start);
+        uintptr_t shadow_mem_start = heap_start + OneMB;
+        memcheck_map(shadow_mem_start);
         initialized_memcheck = 1;
     }
     memcheck_trap_enable();
