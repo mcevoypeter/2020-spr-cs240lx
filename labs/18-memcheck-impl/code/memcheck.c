@@ -310,7 +310,6 @@ void *memcheck_alloc(unsigned n) {
 }
 
 void memcheck_free(void *ptr) {
-    unimplemented();
 }
 
 void *sys_memcheck_alloc(unsigned n) {
