@@ -11,7 +11,11 @@ int notmain_client() {
     for(int i = 0; i < 10; i++)
         *x += i;
     printk("*x = %d\n", *x);
+
+    // we don't check any more thoroughly.
+    trace("expect 'domain section fault' for addr %p, at pc %p\n", x, get32);
     assert(get32(x) == expected);
+    fault_expected((uint32_t)get32, (uint32_t)x, DOMAIN_SECTION_FAULT, 0);
     return *x;
 }
 
