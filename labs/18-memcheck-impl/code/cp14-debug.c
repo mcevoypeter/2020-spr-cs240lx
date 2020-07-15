@@ -180,26 +180,46 @@ int syscall_vector(unsigned pc, uint32_t r0, uint32_t r1, uint32_t r2) {
             spsr_set(spsr);
             return 0;
         case 1:;
-            // TODO: pass more arguments to syscall
-            // TODO: turn tracking off
-            void *addr = (void *)r0;
-            uint32_t n = r1;
-            uint32_t state = r2;
+            uint32_t n = r0;
+            memcheck_trap_disable();
+            uintptr_t ptr = (uintptr_t)kmalloc(n);
+            //assert(heap_start <= ptr && ptr < heap_start + OneMB);
+
+
             trace("setting %u bytes of shadow memory starting at %p as %b\n", 
-                    n, addr, state);
+                    n, ptr+OneMB, SH_ALLOCED);
 
             // enable access to shadow memory
             dom_perm_set(shadow_id, DOM_client);
             assert(dom_perm_get(shadow_id) == DOM_client);
 
             // set shadow memory to alloced
-            memset(addr, state, n);
+            memset((char *)ptr+OneMB, SH_ALLOCED, n);
 
             // disable access to shadow memory
             dom_perm_set(shadow_id, DOM_no_access);
             assert(dom_perm_get(shadow_id) == DOM_no_access);
+            memcheck_trap_enable();
+            return (int)ptr;
+        case 2:;
+            memcheck_trap_disable();
+            ptr = r0;
+            kfree((void *)ptr);
 
-            return 0;
+            trace("setting %u bytes of shadow memory starting at %p as %b\n", 
+                    4, ptr+OneMB, SH_ALLOCED);
+
+            // enable access to shadow memory
+            dom_perm_set(shadow_id, DOM_client);
+            assert(dom_perm_get(shadow_id) == DOM_client);
+
+            // set shadow memory to alloced
+            memset((char *)ptr+OneMB, SH_FREED, 4);
+
+            // disable access to shadow memory
+            dom_perm_set(shadow_id, DOM_no_access);
+            assert(dom_perm_get(shadow_id) == DOM_no_access);
+            memcheck_trap_enable();
         case 10: 
             return 10;
         default:

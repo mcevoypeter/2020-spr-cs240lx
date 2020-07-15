@@ -21,11 +21,19 @@ MK_FN(user_mode_run_fn)
     pop {r2-r12, lr}
     bx lr
 
-@ arguments:
-@   r0 = permission
-MK_FN(shadow_mem_set)
+@ arguments
+@   r0 = n
+MK_FN(sys_memcheck_alloc_trampoline)
     push {r4-r12, lr}
     swi 1
+    pop {r4-r12, lr}
+    bx lr
+
+@ arguments
+@   r0 = ptr
+MK_FN(sys_memcheck_free_trampoline)
+    push {r4-r12, lr}
+    swi 2
     pop {r4-r12, lr}
     bx lr
 
